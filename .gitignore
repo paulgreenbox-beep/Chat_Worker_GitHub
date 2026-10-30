@@ -1,0 +1,8 @@
+/target/
+/**/target/
+.env
+.env.*
+*.log
+*.db
+*.sqlite
+secrets/
