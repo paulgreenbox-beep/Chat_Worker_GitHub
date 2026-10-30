@@ -30,10 +30,15 @@ fn all_six_canonical_strings_keep_the_existing_writer_format() {
     for (transition, name) in TRANSITIONS {
         let encoded = serde_json::to_vec(&transition).unwrap();
         assert_eq!(encoded, serde_json::to_vec(name).unwrap());
-        assert_eq!(serde_json::from_slice::<Transition>(&encoded).unwrap(), transition);
+        assert_eq!(
+            serde_json::from_slice::<Transition>(&encoded).unwrap(),
+            transition
+        );
         let decoded: Record = cwg_security::decode(&record(json!(name)), MAX_RECORD).unwrap();
         match decoded.event {
-            Event::Advance { transition: actual, .. } => assert_eq!(actual, transition),
+            Event::Advance {
+                transition: actual, ..
+            } => assert_eq!(actual, transition),
             _ => panic!("wrong event variant"),
         }
     }
@@ -45,7 +50,9 @@ fn object_null_aliases_are_refused_directly_and_inside_a_journal_record() {
         // Build raw JSON instead of a pre-decoded map, exercising both boundaries.
         let object = format!("{{\"{name}\":null}}");
         assert!(serde_json::from_str::<Transition>(&object).is_err());
-        assert!(cwg_security::decode::<Transition>(object.as_bytes(), MAX_RECORD).is_err());
+        assert!(
+            cwg_security::decode::<Transition>(object.as_bytes(), MAX_RECORD).is_err()
+        );
         let nested = record(serde_json::from_str(&object).unwrap());
         assert!(cwg_security::decode::<Record>(&nested, MAX_RECORD).is_err());
     }
@@ -65,7 +72,9 @@ fn other_noncanonical_values_cannot_reach_journal_replay() {
         json!("DELIVERING"),
         json!(""),
     ] {
-        assert!(cwg_security::decode::<Record>(&record(value), MAX_RECORD).is_err());
+        assert!(
+            cwg_security::decode::<Record>(&record(value), MAX_RECORD).is_err()
+        );
     }
 }
 

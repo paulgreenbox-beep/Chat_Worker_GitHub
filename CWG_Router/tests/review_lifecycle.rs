@@ -25,7 +25,9 @@ fn register(router: &mut Router, message: &Message) -> BindingKey {
         repository: message.source.repository.clone(),
         goal_id: message.goal_id.clone(),
     };
-    router.register(key.clone(), message.target.clone()).unwrap();
+    router
+        .register(key.clone(), message.target.clone())
+        .unwrap();
     key
 }
 
@@ -45,9 +47,18 @@ fn revoked_inflight_outcome_remains_recordable_without_reopening_a_claim() {
     router.mark_unknown(&a).unwrap();
     router.block_unknown(&a).unwrap();
     assert_eq!(router.state(&a), Some(DeliveryStatus::Blocked));
-    assert_eq!(router.begin_delivery(&a), Err(RoutingError::StaleOrWrongState));
-    assert_eq!(router.acknowledge(&a), Err(RoutingError::StaleOrWrongState));
-    assert_eq!(router.enqueue_verified(first), Err(RoutingError::BindingSuspended));
+    assert_eq!(
+        router.begin_delivery(&a),
+        Err(RoutingError::StaleOrWrongState)
+    );
+    assert_eq!(
+        router.acknowledge(&a),
+        Err(RoutingError::StaleOrWrongState)
+    );
+    assert_eq!(
+        router.enqueue_verified(first),
+        Err(RoutingError::BindingSuspended)
+    );
     router.begin_delivery(&b).unwrap();
     router.mark_delivered(&b).unwrap();
     router.acknowledge(&b).unwrap();
@@ -68,7 +79,10 @@ fn failed_capacity_admission_reserves_neither_id_and_completion_never_evicts_rep
     let key = MessageKey::from(&valid);
     let mut oversized = valid.clone();
     oversized.body.push('!');
-    assert_eq!(router.enqueue_verified(oversized), Err(RoutingError::CapacityExceeded));
+    assert_eq!(
+        router.enqueue_verified(oversized),
+        Err(RoutingError::CapacityExceeded)
+    );
     assert_eq!(router.state(&key), None);
     router.enqueue_verified(valid.clone()).unwrap();
     router.begin_delivery(&key).unwrap();
@@ -77,6 +91,9 @@ fn failed_capacity_admission_reserves_neither_id_and_completion_never_evicts_rep
     router.complete(&key).unwrap();
     let mut replay = valid;
     replay.message_id = "different-id".into();
-    assert_eq!(router.enqueue_verified(replay), Err(RoutingError::Conflict));
+    assert_eq!(
+        router.enqueue_verified(replay),
+        Err(RoutingError::Conflict)
+    );
     assert_eq!(router.state(&key), Some(DeliveryStatus::Completed));
 }

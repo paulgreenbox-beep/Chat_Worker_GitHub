@@ -28,7 +28,10 @@ fn arbitrary_short_reads_preserve_signature_input_bytes_exactly() {
     let mut wire = header(body.len(), "");
     wire.extend_from_slice(body);
     for chunk in [1, 2, 3, 7, 64] {
-        let mut reader = Fragmented { remaining: &wire, chunk };
+        let mut reader = Fragmented {
+            remaining: &wire,
+            chunk,
+        };
         let request = read_request(&mut reader).unwrap();
         assert_eq!(request.body, body);
         assert!(reader.remaining.is_empty());
@@ -39,10 +42,16 @@ fn arbitrary_short_reads_preserve_signature_input_bytes_exactly() {
 fn maximum_body_is_accepted_and_one_more_byte_is_refused_before_read() {
     let mut maximum = header(MAX_EVENT_BYTES, "");
     maximum.extend(std::iter::repeat_n(b' ', MAX_EVENT_BYTES));
-    assert_eq!(read_request(&mut maximum.as_slice()).unwrap().body.len(), MAX_EVENT_BYTES);
+    assert_eq!(
+        read_request(&mut maximum.as_slice()).unwrap().body.len(),
+        MAX_EVENT_BYTES
+    );
     let oversized = header(MAX_EVENT_BYTES + 1, "");
     // No body is present: refusal must be size, not truncation while reading it.
-    assert_eq!(read_request(&mut oversized.as_slice()).err(), Some("HTTP_BODY_SIZE"));
+    assert_eq!(
+        read_request(&mut oversized.as_slice()).err(),
+        Some("HTTP_BODY_SIZE")
+    );
 }
 
 #[test]
@@ -53,7 +62,10 @@ fn mixed_case_duplicates_fail_even_when_values_are_identical() {
         "X-GITHUB-DELIVERY: owned-review\r\n",
     ] {
         let wire = header(2, extra);
-        assert_eq!(read_request(&mut wire.as_slice()).err(), Some("HTTP_DUPLICATE_HEADER"));
+        assert_eq!(
+            read_request(&mut wire.as_slice()).err(),
+            Some("HTTP_DUPLICATE_HEADER")
+        );
     }
 }
 
@@ -61,7 +73,10 @@ fn mixed_case_duplicates_fail_even_when_values_are_identical() {
 fn exact_content_length_does_not_consume_a_subsequent_frame() {
     let mut wire = header(2, "");
     wire.extend_from_slice(b"{}NEXT");
-    let mut reader = Fragmented { remaining: &wire, chunk: 2 };
+    let mut reader = Fragmented {
+        remaining: &wire,
+        chunk: 2,
+    };
     assert_eq!(read_request(&mut reader).unwrap().body, b"{}");
     // The host closes after one request; this is not pipelining support.
     assert_eq!(reader.remaining, b"NEXT");
