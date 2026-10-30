@@ -845,10 +845,15 @@ mod tests {
             assert_eq!(outcome.result, Err("GITHUB_STATUS_NOT_OK"));
             closed(&outcome, 3);
             assert!(
-                !String::from_utf8(capture.recv().unwrap())
-                    .unwrap()
-                    .to_ascii_lowercase()
-                    .contains("authorization:")
+                !String::from_utf8(
+                    capture
+                        .into_iter()
+                        .find(|raw| raw.ends_with(b"\r\n\r\n"))
+                        .expect("one complete fixture request")
+                )
+                .unwrap()
+                .to_ascii_lowercase()
+                .contains("authorization:")
             );
         }
     }

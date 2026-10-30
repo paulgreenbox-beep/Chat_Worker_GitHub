@@ -11,3 +11,5 @@ audit/evidence/** -text
 # HMAC fixtures are exact raw bytes, including their final LF.
 CWG_GitHub/tests/fixtures/** -text
 audit/retained-fixture-repro.json -text
+# This native PowerShell receipt intentionally preserves its original CRLF bytes.
+audit/evidence/receiver-baseline/platform-3.json whitespace=cr-at-eol
