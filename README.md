@@ -15,7 +15,8 @@ authority. No containers, VMs, model calls, automatic merge or installed service
 | CWG_Security | Bounded duplicate-key JSON checks; Windows CNG HMAC | New Rust/native tests NOT_RUN |
 | CWG_State | Bounded file-locked/fsynced persistent inbox; replay protection | New Rust/native tests NOT_RUN |
 | CWG_GitHub | Foreground Windows receiver, fixed-host API reconciliation, local inbox CLI | Build/live webhook E2E NOT_RUN |
-| CWG_MCP / CWG_Worker | Planned MCP and Codex adapter | NOT_IMPLEMENTED |
+| CWG_MCP | Scoped stdio tools (legacy + modern MCP), durable local worker reports | New Rust tests/build NOT_RUN; Codex thread identity NOT_VERIFIED |
+| CWG_Worker | Proactive Codex App Server adapter | NOT_IMPLEMENTED |
 | CWG_CheckBroker | Optional independent check integration | Disabled; not needed for ordinary messages |
 
 The new receiver is implementation source, **not a qualified release**. The
@@ -39,7 +40,7 @@ non-retryable interrupted delivery state and refuses torn/corrupt records.
 See [receiver installation, API and security guide](doc/receiver.md) and the
 [inert Windows example](examples/receiver.windows.example.json). No webhook,
 proxy, credentials, background process or chat connection is installed by this
-repository. Local inbox inspection is not delivery to Codex.
+repository. Local inbox inspection is not delivery to Codex. The new [MCP stdio connector](CWG_MCP/README.md) lets an approved local agent pull exact-scoped task data and save data-only reports; it does not wake a chat or publish to GitHub. See [MCP wire contract](doc/mcp.md).
 
 ## Development
 
@@ -66,7 +67,9 @@ are preserved, not relabelled as current acceptance.
 ## End-to-end acceptance still open
 
 A successful durable enqueue does not prove provider acceptance, worker receipt
-or completed work. Actual Codex connection/account/thread isolation, MCP caller
-authorization and outbound replies need separate implementation and approval.
+or completed work. Actual Codex connection/account/thread isolation, authenticated MCP caller identity,
+proactive App Server delivery and a GitHub outbound publisher still need separate
+implementation and approval. The MCP tool protocol is now present as unverified
+source, not a qualified live connection.
 Do not claim end-to-end readiness until those paths have been tested on two
 real registered chats with explicit owner authorization.
