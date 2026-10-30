@@ -204,6 +204,50 @@ impl Store {
             Ok(((), Some(Event::Advance { binding_id: binding.id.clone(), message_id: id.into(), transition })))
         })
     }
+    /// Read one row inside the exact owner-approved binding, without moving
+    /// the delivery state or exposing messages belonging to another binding.
+    pub fn get_message(&self, binding: &Binding, id: &str) -> Result<Option<Item>> {
+        if id.is_empty() || id.len() > 128
+            || !id.bytes().all(|c| c.is_ascii_alphanumeric() || b"-_:".contains(&c)) {
+            return Err("MESSAGE_ID_INVALID");
+        }
+        self.transact(|v| {
+            v.binding(binding)?;
+            let item = v.messages.get(id).filter(|row| row.binding_id == binding.id);
+            let found = item.map(|row| Item {
+                binding_id: row.binding_id.clone(),
+                generation: row.generation,
+                message: row.message.clone(),
+                status: v.router.state(&MessageKey::from(&row.message))
+                    .expect("replayed message"),
+            });
+            Ok((found, None))
+        })
+    }
+
+    /// Bounded, offset-based inbox listing for MCP pagination. No mutation.
+    pub fn inbox_page(
+        &self, binding: &Binding, offset: usize, limit: usize
+    ) -> Result<Vec<Item>> {
+        if !(1..=100).contains(&limit) || offset > MAX_MESSAGES {
+            return Err("INBOX_PAGE_INVALID");
+        }
+        self.transact(|v| {
+            v.binding(binding)?;
+            let rows = v.order.iter().filter_map(|id| {
+                let row = &v.messages[id];
+                (row.binding_id == binding.id).then(|| Item {
+                    binding_id: row.binding_id.clone(),
+                    generation: row.generation,
+                    message: row.message.clone(),
+                    status: v.router.state(&MessageKey::from(&row.message))
+                        .expect("replayed message"),
+                })
+            }).skip(offset).take(limit).collect();
+            Ok((rows, None))
+        })
+    }
+
     pub fn inbox(&self, binding: &Binding, limit: usize) -> Result<Vec<Item>> {
         if !(1..=100).contains(&limit) { return Err("INBOX_LIMIT"); }
         self.transact(|v| {
