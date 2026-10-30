@@ -2,15 +2,20 @@
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import os from 'node:os';
-import { hash, redact, reserveAttempt, runCommand, snapshot, snapshotDrift, provenanceLimits } from './support.mjs';
+import { hash, readRepositoryFile, redact, repositoryFiles, reserveAttempt, runCommand, snapshot, snapshotDrift, provenanceLimits } from './support.mjs';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const phase = process.argv[2];
 if (!/^(?:receiver-(?:baseline|final)(?:-[1-9][0-9]*)?|receiver-regression-(?:security|state|github|http|winhttp|retained|commit|workspace)(?:-[1-9][0-9]*)?)$/.test(phase ?? '')) throw Error('Use a fresh named receiver attempt');
 const attempt = reserveAttempt(root, phase);
 const env = { ...process.env, CARGO_NET_OFFLINE: 'true' };
 const clean = value => redact(value, root);
+const fixtureInputs = () => Object.fromEntries(repositoryFiles(root, runCommand, env)
+  .filter(file => /(?:^|\/)tests\/fixtures\//.test(file))
+  .map(file => [file, hash(readRepositoryFile(root, file))]));
 const result = { phase, started_utc: new Date().toISOString(), platform: process.platform, architecture: process.arch,
-  os_release: os.release(), cargo_net_offline: true, checks: [], failures: [], provenance_limits: provenanceLimits };
+  os_release: os.release(), cargo_net_offline: true,
+  native_fixture_parent: env.CWG_NATIVE_FIXTURE_PARENT ? { selection: 'explicit test-only parent; no production override', path_sha256: hash(env.CWG_NATIVE_FIXTURE_PARENT) } : { selection: 'default Windows temporary directory' },
+  checks: [], failures: [], provenance_limits: provenanceLimits };
 const regressions = {
   security: ['test', '-p', 'cwg-security', '--locked', '--offline', 'cng_', '--', '--nocapture'],
   state: ['test', '-p', 'cwg-state', '--test', 'durable', '--locked', '--offline', 'security_regression_', '--', '--nocapture'],
@@ -38,6 +43,11 @@ try {
   before = snapshot(root, runCommand, env);
   Object.assign(result, { source_sha: before.head, inputs_before: before.inputs, external_inputs_before: before.external_inputs,
     environment_before: before.environment, scoped_inputs_match_head: before.inputs_match_head });
+  result.fixture_inputs_before = fixtureInputs();
+  for (const [file, digest] of Object.entries(result.fixture_inputs_before)) {
+    const saved = runCommand('git', ['show', `${before.head}:${file}`], { cwd: root, env });
+    if (saved.exit_code !== 0 || digest !== hash(saved.stdout)) throw Error('Commit raw fixture inputs before verification');
+  }
   if (phase.startsWith('receiver-final') && !before.inputs_match_head) throw Error('Commit build/audit inputs before final verification');
   result.rustc = runCommand('rustc', ['--version', '--verbose'], { cwd: root, env });
   result.cargo = runCommand('cargo', ['--version'], { cwd: root, env });
@@ -63,6 +73,8 @@ try {
 try {
   const after = snapshot(root, runCommand, env);
   Object.assign(result, { source_sha_after: after.head, inputs_after: after.inputs, external_inputs_after: after.external_inputs, environment_after: after.environment });
+  result.fixture_inputs_after = fixtureInputs();
+  if (JSON.stringify(result.fixture_inputs_before) !== JSON.stringify(result.fixture_inputs_after)) result.failures.push('RAW_FIXTURE_DRIFT');
   if (before) result.failures.push(...snapshotDrift(before, after));
 } catch (error) { result.failures.push(clean(`After snapshot: ${error}`)); }
 result.finished_utc = new Date().toISOString();

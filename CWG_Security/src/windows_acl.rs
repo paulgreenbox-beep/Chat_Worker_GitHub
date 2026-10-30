@@ -7,7 +7,9 @@
 //!
 //! References: GetSecurityInfo, File Security and Access Rights, CreateFileW and
 //! GetFileInformationByHandle in the Microsoft Win32 documentation.
-use std::{fs::File, path::Path};
+use std::fs::File;
+#[cfg(not(windows))]
+use std::path::Path;
 
 pub type Result<T> = std::result::Result<T, &'static str>;
 
@@ -229,7 +231,9 @@ mod native {
                 return Err("ACL_TOKEN_QUERY");
             }
         }
-        let token = Token(handle);
+        token_sid(Token(handle))
+    }
+    fn token_sid(token: Token) -> Result<Sid> {
         let mut required = 0;
         // SAFETY: the sizing call has a null/zero buffer as specified by Win32.
         unsafe {

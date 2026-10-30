@@ -342,6 +342,30 @@ fn concurrent_claims_have_one_winner() {
         1
     );
 }
+#[test]
+fn direct_put_refuses_wrong_target_without_poisoning_source_or_delivery_ids() {
+    let t = Temp::new();
+    let b = binding();
+    let s = t.store();
+    s.register(&b).unwrap();
+    let mut wrong_thread = message(&b, 1);
+    wrong_thread.target.thread_id = "neighbor-thread".into();
+    let mut wrong_provider = message(&b, 1);
+    wrong_provider.target.provider = "other".into();
+    let mut wrong_goal = message(&b, 1);
+    wrong_goal.goal_id = "CWG-2".into();
+    for invalid in [wrong_thread, wrong_provider, wrong_goal] {
+        assert_eq!(
+            s.put_verified(&b, "same-delivery", invalid),
+            Err("MESSAGE_BINDING_MISMATCH")
+        );
+        assert!(s.inbox(&b, 100).unwrap().is_empty());
+    }
+    assert!(s.put_verified(&b, "same-delivery", message(&b, 1)).unwrap());
+    let inbox = s.inbox(&b, 100).unwrap();
+    assert_eq!(inbox.len(), 1);
+    assert_eq!(inbox[0].message.target, b.target);
+}
 #[cfg(unix)]
 #[test]
 fn symlink_root_refused() {

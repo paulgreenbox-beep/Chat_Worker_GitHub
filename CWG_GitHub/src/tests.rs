@@ -2,6 +2,10 @@ use super::*;
 use serde_json::{Value, json};
 use std::cell::RefCell;
 
+#[cfg(windows)]
+#[path = "../../CWG_State/tests/support/windows_fixture.rs"]
+mod windows_fixture;
+
 const FIXTURE: &[u8] = include_bytes!("../tests/fixtures/created.json");
 struct Api {
     values: std::collections::BTreeMap<String, Vec<u8>>,
@@ -465,17 +469,8 @@ fn audit_each_api_error_propagates_without_authorization_fallback() {
 #[cfg(windows)]
 #[test]
 fn signed_fixture_commits_once_and_bad_mac_never_reads_api() {
-    use std::time::{SystemTime, UNIX_EPOCH};
     let (mut cfg, api, _) = fixture();
-    let dir = std::env::temp_dir().join(format!(
-        "cwg-ingress-{}-{}",
-        std::process::id(),
-        SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_nanos()
-    ));
-    std::fs::create_dir(&dir).unwrap();
+    let dir = windows_fixture::private_temp_dir("ingress");
     cfg.state_directory = dir.clone();
     let store = Store::open(&dir).unwrap();
     store.register(&cfg.routes[0].binding).unwrap();

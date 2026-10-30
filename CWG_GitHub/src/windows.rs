@@ -663,7 +663,9 @@ mod tests {
             "401 Unauthorized",
             "403 Forbidden",
             "404 Not Found",
+            "429 Too Many Requests",
             "500 Server Error",
+            "503 Service Unavailable",
         ] {
             let (address, capture, worker) = server(
                 response(status, b"", "WWW-Authenticate: Negotiate\r\n"),

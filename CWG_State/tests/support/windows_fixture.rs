@@ -38,7 +38,26 @@ pub fn private_temp_dir(label: &str) -> PathBuf {
                 .bytes()
                 .all(|b| b.is_ascii_alphanumeric() || b"-_".contains(&b))
     );
-    let root = std::env::temp_dir().join(format!(
+    // Test location selection only: runtime ACL policy is always enforced.
+    // This permits an explicitly approved fresh fixture below safe ancestors
+    // when the host's default TEMP chain itself has unsafe application grants.
+    let parent = std::env::var_os("CWG_NATIVE_FIXTURE_PARENT")
+        .map(PathBuf::from)
+        .unwrap_or_else(std::env::temp_dir);
+    assert!(
+        parent.is_absolute()
+            && !parent
+                .components()
+                .any(|component| matches!(component, Component::ParentDir | Component::CurDir))
+    );
+    for ancestor in parent.ancestors() {
+        let metadata = fs::symlink_metadata(ancestor).expect("fixture parent must exist");
+        assert!(
+            !metadata.file_type().is_symlink() && metadata.file_attributes() & 0x400 == 0,
+            "fixture parent chain cannot contain reparse aliases"
+        );
+    }
+    let root = parent.join(format!(
         "cwg-{label}-{}-{}-{}",
         std::process::id(),
         SystemTime::now()
@@ -146,7 +165,18 @@ unsafe extern "system" {
         bytes: usize,
     ) -> *mut c_void;
     fn FlushViewOfFile(view: *const c_void, bytes: usize) -> i32;
+    #[allow(dead_code)] // Mapping Drop asserts release in the retained-access target.
     fn UnmapViewOfFile(view: *const c_void) -> i32;
+    fn DeviceIoControl(
+        device: Handle,
+        code: u32,
+        input: *const c_void,
+        input_size: u32,
+        output: *mut c_void,
+        output_size: u32,
+        returned: *mut u32,
+        overlapped: *mut c_void,
+    ) -> i32;
 }
 struct Local(*mut c_void);
 impl Drop for Local {
@@ -346,4 +376,85 @@ impl Drop for WritableMapping {
             "release owned mapping handle"
         );
     }
+}
+
+/// Both junction and target are owned fixtures. No symlink privilege or host
+/// developer-mode setting is enabled; this uses an actual mount-point ioctl.
+#[allow(dead_code)] // Shared utility imported by targets without junction cases.
+pub fn create_fixture_junction(link: &Path, target: &Path) -> io::Result<()> {
+    use std::os::windows::ffi::OsStrExt;
+    set_fixture_acl(target, None)?;
+    fs::create_dir(link)?;
+    set_fixture_acl(link, None)?;
+    let canonical = target.canonicalize()?;
+    let canonical_wide: Vec<u16> = canonical.as_os_str().encode_wide().collect();
+    let verbatim: Vec<u16> = r"\\?\".encode_utf16().collect();
+    let plain = canonical_wide
+        .strip_prefix(verbatim.as_slice())
+        .ok_or_else(|| io::Error::other("fixture local verbatim target"))?;
+    let substitute: Vec<u16> = r"\??\"
+        .encode_utf16()
+        .chain(plain.iter().copied())
+        .collect();
+    let print = plain.to_vec();
+    let units = substitute
+        .len()
+        .checked_add(print.len())
+        .and_then(|value| value.checked_add(2))
+        .ok_or_else(|| io::Error::other("fixture reparse size"))?;
+    let total = units
+        .checked_mul(2)
+        .and_then(|value| value.checked_add(16))
+        .filter(|value| *value <= 16 * 1024)
+        .ok_or_else(|| io::Error::other("fixture reparse size"))?;
+    let mut bytes = vec![0u8; total];
+    bytes[0..4].copy_from_slice(&0xa000_0003u32.to_le_bytes());
+    bytes[4..6].copy_from_slice(&u16::try_from(total - 8).unwrap().to_le_bytes());
+    bytes[10..12].copy_from_slice(&u16::try_from(substitute.len() * 2).unwrap().to_le_bytes());
+    bytes[12..14].copy_from_slice(
+        &u16::try_from((substitute.len() + 1) * 2)
+            .unwrap()
+            .to_le_bytes(),
+    );
+    bytes[14..16].copy_from_slice(&u16::try_from(print.len() * 2).unwrap().to_le_bytes());
+    for (index, unit) in substitute
+        .iter()
+        .chain(Some(&0u16))
+        .chain(print.iter())
+        .chain(Some(&0u16))
+        .enumerate()
+    {
+        bytes[16 + index * 2..18 + index * 2].copy_from_slice(&unit.to_le_bytes());
+    }
+    let mut aligned = vec![0u32; total.div_ceil(4)];
+    // SAFETY: initialized destination has at least total bytes. This is the
+    // documented mount-point REPARSE_DATA_BUFFER layout with bounded UTF-16.
+    unsafe {
+        ptr::copy_nonoverlapping(bytes.as_ptr(), aligned.as_mut_ptr().cast::<u8>(), total);
+    }
+    let file = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .share_mode(3)
+        .custom_flags(0x0020_0000 | 0x0200_0000)
+        .open(link)?;
+    let mut returned = 0;
+    // SAFETY: the newly created empty directory is an owned registered fixture;
+    // input is aligned and initialized; a synchronous ioctl has no output data.
+    if unsafe {
+        DeviceIoControl(
+            file.as_raw_handle(),
+            0x0009_00a4,
+            aligned.as_ptr().cast(),
+            total as u32,
+            ptr::null_mut(),
+            0,
+            &mut returned,
+            ptr::null_mut(),
+        )
+    } == 0
+    {
+        return Err(io::Error::last_os_error());
+    }
+    Ok(())
 }

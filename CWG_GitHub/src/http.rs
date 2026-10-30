@@ -159,6 +159,18 @@ mod tests {
         for len in ["0", "+2", "-2", "999999999999999999999", "3"] {
             assert!(read_request(&mut &raw("", len, "{}")[..]).is_err());
         }
+        assert_eq!(
+            read_request(&mut &raw("", &(MAX_EVENT_BYTES + 1).to_string(), "")[..]).err(),
+            Some("HTTP_BODY_SIZE")
+        );
+    }
+    #[test]
+    fn header_limit_is_checked_before_unbounded_input() {
+        let oversized = format!("POST /github HTTP/1.1\r\nHost: {}", "x".repeat(MAX_HEADERS));
+        assert_eq!(
+            read_request(&mut oversized.as_bytes()).err(),
+            Some("HEADERS_TOO_LARGE")
+        );
     }
     #[test]
     fn header_newline_injection_refused() {
@@ -246,6 +258,7 @@ mod tests {
         use std::{io::Write, net::TcpListener, thread, time::Duration};
         for body_stall in [false, true] {
             let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+            listener.set_nonblocking(true).unwrap();
             let address = listener.local_addr().unwrap();
             let sender = thread::spawn(move || {
                 let mut stream = TcpStream::connect(address).unwrap();
@@ -254,7 +267,7 @@ mod tests {
                 stream.write_all(&bytes[..sent]).unwrap();
                 thread::sleep(Duration::from_millis(150));
             });
-            let (mut stream, _) = listener.accept().unwrap();
+            let mut stream = accept_fixture(&listener);
             let start = Instant::now();
             assert_eq!(
                 read_stream_request(&mut stream, start + Duration::from_millis(35)).err(),
@@ -274,6 +287,7 @@ mod tests {
             time::Duration,
         };
         let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        listener.set_nonblocking(true).unwrap();
         let address = listener.local_addr().unwrap();
         let sender = thread::spawn(move || {
             let mut stream = TcpStream::connect(address).unwrap();
@@ -281,11 +295,26 @@ mod tests {
             stream.write_all(&bytes[..bytes.len() - 1]).unwrap();
             stream.shutdown(Shutdown::Write).unwrap();
         });
-        let (mut stream, _) = listener.accept().unwrap();
+        let mut stream = accept_fixture(&listener);
         assert_eq!(
             read_stream_request(&mut stream, Instant::now() + Duration::from_secs(1)).err(),
             Some("HTTP_TRUNCATED_OR_TIMEOUT")
         );
         sender.join().unwrap();
+    }
+
+    fn accept_fixture(listener: &std::net::TcpListener) -> TcpStream {
+        let end = Instant::now() + std::time::Duration::from_secs(2);
+        loop {
+            match listener.accept() {
+                Ok((stream, _)) => return stream,
+                Err(error)
+                    if error.kind() == std::io::ErrorKind::WouldBlock && Instant::now() < end =>
+                {
+                    std::thread::sleep(std::time::Duration::from_millis(2));
+                }
+                Err(error) => panic!("owned fixture accept failed or timed out: {error}"),
+            }
+        }
     }
 }
