@@ -216,6 +216,13 @@ mod tests {
             Err("REPORT_ID_CONFLICT")
         );
         assert_eq!(append(&root, &b, "gh:1:4", "r2", "result", "reported"), Ok(true));
+        let mut file = OpenOptions::new().append(true)
+            .open(root.join("worker-reports.jsonl")).unwrap();
+        file.write_all(b"torn").unwrap();
+        file.sync_all().unwrap();
+        drop(file);
+        // Even an identical earlier ID must not hide a corrupt tail.
+        assert_eq!(append(&root, &b, "gh:1:4", "r1", "progress", "started"), Err("REPORT_CORRUPT"));
         fs::remove_dir_all(root).unwrap();
     }
 }
