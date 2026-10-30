@@ -9,8 +9,9 @@ import { inspectStack } from './verify-stack.mjs';
 function fixture(run) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cwg-stack-test-'));
   const git = (...args) => {
+    const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !/^GIT_/i.test(key)));
     const out = spawnSync('git', ['-C', root, ...args], { encoding: 'utf8', timeout: 5000, shell: false,
-      env: { ...process.env, GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: process.platform === 'win32' ? 'NUL' : '/dev/null' } });
+      env: { ...env, GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: process.platform === 'win32' ? 'NUL' : '/dev/null' } });
     assert.equal(out.status, 0, out.stderr);
     return out.stdout.trim();
   };
