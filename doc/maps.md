@@ -7,14 +7,14 @@ flowchart LR
   Receiver --> Guard[CWG_Security Verification]
   Guard --> State[(CWG_State Durable Inbox)]
   State --> Router[CWG_Router Exact Binding]
-  Router --> Adapter[CWG_Worker Provider Adapter]
-  Adapter --> ChatA[Codex thread A]
-  Adapter --> ChatB[Codex thread B]
-  ChatA --> Ack[Receipt / Completion]
-  ChatB --> Ack
-  Ack --> State
-  State --> Outbound[Authorized GitHub Publisher]
-  Outbound --> GH
+  Router --> MCP[CWG_MCP scoped stdio inbox]
+  MCP --> ChatA[Configured Codex client A]
+  MCP --> ChatB[Configured Codex client B]
+  ChatA -->|Local report| MCP
+  ChatB -->|Local report| MCP
+  MCP --> Outbox[(Local worker reports)]
+  Outbox -.-> Outbound[Future authorized GitHub Publisher]
+  Outbound -.-> GH
 ```
 
 ```mermaid
@@ -34,7 +34,14 @@ The event loop is not a shell runner. Transport acknowledgement, agent acknowled
 
 ## Implementation boundary
 
-Only `CWG_Protocol` and `CWG_Router` are Cargo workspace members. The other component directories contain planned-interface documentation. Router starts storage at VERIFIED after a trusted controller's ingress checks. The PENDING/signature/API/authorization path in this diagram is still design only. Router now records every depicted post-VERIFIED transition, but does not verify the external observations that authorize each transition. It has no transport, database or account-aware thread adapter.
+The Protocol, Router, Security, GitHub receiver, State and MCP sources are now
+Cargo workspace members in this draft stack. The GitHub receiver has bounded
+webhook/API reconciliation and durable inbox source, but its native Windows
+verification remains NOT_RUN. The MCP provides a **pull-only** stdio tool
+surface and local worker-report outbox; this does not prove that a Codex chat
+received a message. No authenticated proactive Codex App Server adapter or
+outbound GitHub publisher exists. Logical tests do not establish provider
+thread/account isolation, and owner-controlled ACLs remain a prerequisite.
 
 Repository-name matching is ASCII case-insensitive; thread/provider/GOAL matching is exact. [Protocol rules](protocol.md) and [tests](testing.md) define the implemented scope. No diagram edge or model test proves actual GitHub-to-Codex delivery.
 
