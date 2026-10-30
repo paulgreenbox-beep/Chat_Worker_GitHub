@@ -77,6 +77,11 @@ pub fn private_temp_dir(label: &str) -> PathBuf {
 }
 
 pub fn set_fixture_acl(path: &Path, grant: Option<FixtureGrant>) -> io::Result<()> {
+    require_owned_path(path, false)?;
+    native_acl(path, grant)
+}
+
+fn require_owned_path(path: &Path, allow_absent_leaf: bool) -> io::Result<()> {
     if !path.is_absolute()
         || path
             .components()
@@ -95,17 +100,41 @@ pub fn set_fixture_acl(path: &Path, grant: Option<FixtureGrant>) -> io::Result<(
         .ancestors()
         .take_while(|ancestor| ancestor.starts_with(root))
     {
-        let metadata = fs::symlink_metadata(ancestor)?;
+        let metadata = match fs::symlink_metadata(ancestor) {
+            Ok(metadata) => metadata,
+            Err(error)
+                if allow_absent_leaf
+                    && ancestor == path
+                    && error.kind() == io::ErrorKind::NotFound =>
+            {
+                continue;
+            }
+            Err(error) => return Err(error),
+        };
         if metadata.file_attributes() & 0x400 != 0 || metadata.file_type().is_symlink() {
             return Err(io::Error::other(
                 "fixture ACL setter refuses reparse aliases",
             ));
         }
     }
-    native_acl(path, grant)
+    Ok(())
 }
 
 type Handle = *mut c_void;
+#[repr(C)]
+#[derive(Default)]
+struct FileInformation {
+    attributes: u32,
+    creation: [u32; 2],
+    access: [u32; 2],
+    write: [u32; 2],
+    volume: u32,
+    size_high: u32,
+    size_low: u32,
+    links: u32,
+    index_high: u32,
+    index_low: u32,
+}
 #[repr(C)]
 struct TokenUser {
     sid: *mut c_void,
@@ -148,6 +177,7 @@ unsafe extern "system" {
 unsafe extern "system" {
     fn GetCurrentProcess() -> Handle;
     fn CloseHandle(handle: Handle) -> i32;
+    fn GetFileInformationByHandle(handle: Handle, information: *mut FileInformation) -> i32;
     fn LocalFree(memory: *mut c_void) -> *mut c_void;
     fn CreateFileMappingW(
         file: Handle,
@@ -293,6 +323,15 @@ fn native_acl(path: &Path, grant: Option<FixtureGrant>) -> io::Result<()> {
     if opened.file_attributes() & 0x400 != 0 {
         return Err(io::Error::other("fixture reparse"));
     }
+    let mut information = FileInformation::default();
+    // SAFETY: exact Win32 BY_HANDLE_FILE_INFORMATION layout and a live owned
+    // file handle. A multiply linked file cannot be fenced by lexical ancestry.
+    if unsafe { GetFileInformationByHandle(file.as_raw_handle(), &mut information) } == 0 {
+        return Err(io::Error::last_os_error());
+    }
+    if opened.is_file() && information.links != 1 {
+        return Err(io::Error::other("fixture hardlink alias"));
+    }
     // SAFETY: this function only receives registered owned fixture paths; the
     // opened handle pins the exact object and the descriptor owns its DACL.
     let status = unsafe {
@@ -377,6 +416,7 @@ impl Drop for WritableMapping {
 #[allow(dead_code)] // Shared utility imported by targets without junction cases.
 pub fn create_fixture_junction(link: &Path, target: &Path) -> io::Result<()> {
     use std::os::windows::ffi::OsStrExt;
+    require_owned_path(link, true)?;
     set_fixture_acl(target, None)?;
     fs::create_dir(link)?;
     set_fixture_acl(link, None)?;

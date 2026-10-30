@@ -1,0 +1,32 @@
+command: cargo test -p cwg-state --test windows_paths --locked --offline fixture_fence_ -- --nocapture
+CARGO_NET_OFFLINE=true
+exit_code: 101
+stdout:
+
+running 2 tests
+test fixture_fence_rejects_unregistered_junction_path_before_creating_it ... FAILED
+test fixture_fence_refuses_to_change_acl_through_a_hardlink_alias ... FAILED
+
+failures:
+
+failures:
+    fixture_fence_refuses_to_change_acl_through_a_hardlink_alias
+    fixture_fence_rejects_unregistered_junction_path_before_creating_it
+
+test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.01s
+
+
+stderr:
+   Compiling cwg-state v0.1.0 (<workspace>\CWG_State)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.66s
+     Running tests\windows_paths.rs (target\debug\deps\windows_paths-18b9ae024bf5ad47.exe)
+
+thread 'fixture_fence_rejects_unregistered_junction_path_before_creating_it' (22076) panicked at CWG_State\tests\windows_paths.rs:43:5:
+fixture ownership refusal must precede any filesystem mutation
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+thread 'fixture_fence_refuses_to_change_acl_through_a_hardlink_alias' (35716) panicked at CWG_State\tests\windows_paths.rs:55:5:
+a lexical owned-root fence must not grant ACL mutation through a multiply linked file
+error: test failed, to rerun pass `-p cwg-state --test windows_paths`
+
+error: null
