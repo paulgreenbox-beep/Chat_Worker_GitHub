@@ -1,0 +1,12 @@
+{
+  "overall_status": "PASS",
+  "hash_failures": [],
+  "command": "Verify recorded Cargo log SHA-256 values and retention of prior test names",
+  "prior_test_count": 38,
+  "current_test_count": 67,
+  "missing_prior_tests": [],
+  "source_after": "252eb7aecd76611ca7489da85074569b11fe2fb1",
+  "cargo_logs_checked": 30,
+  "exit_code": 0,
+  "source_sha": "252eb7aecd76611ca7489da85074569b11fe2fb1"
+}
