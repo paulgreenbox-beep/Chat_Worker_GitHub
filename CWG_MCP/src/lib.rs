@@ -526,4 +526,49 @@ mod tests {
         assert_eq!(unexpected["result"]["isError"],true);
         fs::remove_dir_all(root).unwrap();
     }
+    #[test]
+    fn second_registered_chat_cannot_leak_or_report_through_first() {
+        let (mut first, root) = setup();
+        let second = Binding {
+            id: "agent-two".into(),
+            repository_id: 11,
+            owner_id: 22,
+            repository: "owner/repo".into(),
+            issue_number: 8,
+            goal_id: "CWG-002".into(),
+            generation: 1,
+            account_id: "account-two".into(),
+            target: ChatTarget {
+                provider: "codex".into(),
+                thread_id: "thread-other".into(),
+            },
+        };
+        let shared = Store::open(&root).unwrap();
+        shared.register(&second).unwrap();
+        shared.put_verified(&second, "delivery-02", Message {
+            schema: "cwg-message-v1".into(),
+            message_id: "gh:11:56".into(),
+            source: GithubSource {
+                repository: "owner/repo".into(), issue_number: 8,
+                comment_id: 56, author_id: 22,
+            },
+            target: second.target.clone(),
+            goal_id: second.goal_id.clone(),
+            body: "other chat confidential task".into(),
+        }).unwrap();
+        init(&mut first);
+        let rows = call(&mut first, "cwg_inbox_list", json!({ "limit": 10 }));
+        assert_eq!(rows["result"]["structuredContent"]["items"].as_array().unwrap().len(), 1);
+        let foreign = call(&mut first, "cwg_message_get", json!({
+            "message_id": "gh:11:56"
+        }));
+        assert_eq!(foreign["result"]["isError"], true);
+        let fake = call(&mut first, "cwg_report_progress", json!({
+            "message_id": "gh:11:56", "report_id": "foreign",
+            "kind": "progress", "body": "not allowed",
+        }));
+        assert_eq!(fake["result"]["isError"], true);
+        fs::remove_dir_all(root).unwrap();
+    }
+
 }
