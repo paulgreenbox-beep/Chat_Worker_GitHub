@@ -51,10 +51,7 @@ fn revoked_inflight_outcome_remains_recordable_without_reopening_a_claim() {
         router.begin_delivery(&a),
         Err(RoutingError::StaleOrWrongState)
     );
-    assert_eq!(
-        router.acknowledge(&a),
-        Err(RoutingError::StaleOrWrongState)
-    );
+    assert_eq!(router.acknowledge(&a), Err(RoutingError::StaleOrWrongState));
     assert_eq!(
         router.enqueue_verified(first),
         Err(RoutingError::BindingSuspended)
@@ -91,9 +88,6 @@ fn failed_capacity_admission_reserves_neither_id_and_completion_never_evicts_rep
     router.complete(&key).unwrap();
     let mut replay = valid;
     replay.message_id = "different-id".into();
-    assert_eq!(
-        router.enqueue_verified(replay),
-        Err(RoutingError::Conflict)
-    );
+    assert_eq!(router.enqueue_verified(replay), Err(RoutingError::Conflict));
     assert_eq!(router.state(&key), Some(DeliveryStatus::Completed));
 }

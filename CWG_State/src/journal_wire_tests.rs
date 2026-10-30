@@ -50,9 +50,7 @@ fn object_null_aliases_are_refused_directly_and_inside_a_journal_record() {
         // Build raw JSON instead of a pre-decoded map, exercising both boundaries.
         let object = format!("{{\"{name}\":null}}");
         assert!(serde_json::from_str::<Transition>(&object).is_err());
-        assert!(
-            cwg_security::decode::<Transition>(object.as_bytes(), MAX_RECORD).is_err()
-        );
+        assert!(cwg_security::decode::<Transition>(object.as_bytes(), MAX_RECORD).is_err());
         let nested = record(serde_json::from_str(&object).unwrap());
         assert!(cwg_security::decode::<Record>(&nested, MAX_RECORD).is_err());
     }
@@ -72,9 +70,7 @@ fn other_noncanonical_values_cannot_reach_journal_replay() {
         json!("DELIVERING"),
         json!(""),
     ] {
-        assert!(
-            cwg_security::decode::<Record>(&record(value), MAX_RECORD).is_err()
-        );
+        assert!(cwg_security::decode::<Record>(&record(value), MAX_RECORD).is_err());
     }
 }
 
@@ -88,5 +84,8 @@ fn transition_parse_failure_does_not_apply_or_normalize_an_event() {
     if let Ok(record) = decoded {
         let _ = view.apply(&record.event);
     }
-    assert_eq!((view.sequence, view.bindings.len(), view.messages.len()), before);
+    assert_eq!(
+        (view.sequence, view.bindings.len(), view.messages.len()),
+        before
+    );
 }
