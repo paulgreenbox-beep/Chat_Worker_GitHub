@@ -55,3 +55,8 @@ cargo build --workspace --release
 ```
 
 See [verification matrix](doc/testing.md), [security follow-up](audit/SECURITY_REVIEW.md) and [historical first-pass audit](audit/REPORT.md) for executed commands, exact checked revisions and limitations. `Cargo.lock` is committed for repeatable workspace dependency selection. Reproduce with the recorded Rust/Cargo versions; an MSRV, other operating systems and bit-for-bit binary reproducibility have not been verified. Use `--locked --offline` once the locked dependencies are locally cached.
+
+The [renewed foundation audit](audit/FOUNDATION_REVERIFICATION.md) records fresh
+build/test evidence, the strict string-only DeliveryStatus wire form and replay
+checks across GOALs in the same repository. Its results apply to the recorded
+source SHA and do not qualify GitHub-to-Codex delivery.

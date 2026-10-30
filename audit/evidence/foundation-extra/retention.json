@@ -1,0 +1,18 @@
+{
+  "source_sha": "3ddf7088b7780d1e97732a534c873887aa361f35",
+  "status": "PASS",
+  "baseline_tests": 67,
+  "final_tests": 70,
+  "missing_tests": [],
+  "unchanged_previous_integration_test_files": [
+    "CWG_Protocol/tests/hardening_regressions.rs",
+    "CWG_Protocol/tests/raw_json.rs",
+    "CWG_Protocol/tests/validation.rs",
+    "CWG_Router/tests/audit_regressions.rs",
+    "CWG_Router/tests/routing.rs",
+    "CWG_Router/tests/security_bounds_and_scope.rs",
+    "CWG_Router/tests/security_regressions.rs"
+  ],
+  "previous_unit_modules_byte_identical": true,
+  "router_production_unchanged": true
+}
