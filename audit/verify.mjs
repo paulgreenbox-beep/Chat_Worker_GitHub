@@ -14,7 +14,7 @@ const gates = [
   ['release', ['build', '--workspace', '--release']],
 ];
 export function runVerification({ root = rootDirectory, phase, run = runCommand, env = process.env, emit = console.log } = {}) {
-  if (!/^(baseline|final(?:-[1-9][0-9]*)?|protocol-before|router-before)$/.test(phase ?? '')) throw new Error('Unknown phase');
+  if (!/^(baseline|final(?:-[1-9][0-9]*)?|protocol-before|router-before|status-before|status-after)$/.test(phase ?? '')) throw new Error('Unknown phase');
   const attempt = reserveAttempt(root, phase);
   const clean = value => redact(value, root);
   const summary = { phase, started_utc: new Date().toISOString(), platform: process.platform,
@@ -32,7 +32,8 @@ export function runVerification({ root = rootDirectory, phase, run = runCommand,
     summary.cargo = run('cargo', ['--version'], { cwd: root, env });
     if (summary.rustc.exit_code !== 0 || summary.cargo.exit_code !== 0) throw new Error('Tool version check failed');
     const selected = phase === 'protocol-before' ? [['test', ['test', '-p', 'cwg-protocol', '--test', 'validation']]]
-      : phase === 'router-before' ? [['test', ['test', '-p', 'cwg-router', '--test', 'audit_regressions']]] : gates;
+      : phase === 'router-before' ? [['test', ['test', '-p', 'cwg-router', '--test', 'audit_regressions']]]
+      : phase.startsWith('status-') ? [['test', ['test', '-p', 'cwg-protocol', '--test', 'status_wire']]] : gates;
     for (const [name, args] of selected) {
       const result = run('cargo', args, { cwd: root, env });
       const output = clean(`command: cargo ${args.join(' ')}\nexit_code: ${result.exit_code}\nstdout:\n${result.stdout}\nstderr:\n${result.stderr}\nerror: ${result.error}\n`);
