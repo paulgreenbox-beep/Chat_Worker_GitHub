@@ -1,51 +1,10 @@
-// Reproduce the requested Cargo gates without a shell or extra npm packages.
-import { spawnSync } from 'node:child_process';
-import { createHash } from 'node:crypto';
-import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
+// Final attempts require committed scoped inputs and reject observed source drift.
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import os from 'node:os';
-
-const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const phase = process.argv[2];
-if (!/^(baseline|final(?:-[1-9][0-9]*)?|protocol-before|router-before)$/.test(phase ?? '')) throw new Error('Unknown phase');
-const directory = resolve(root, 'audit', 'evidence', phase);
-if (existsSync(resolve(directory, 'summary.json'))) throw new Error('Preserve existing evidence; use a new final-N attempt');
-mkdirSync(directory, { recursive: true });
-const hash = value => createHash('sha256').update(value).digest('hex');
-const sanitize = value => {
-  for (const [path, alias] of [[root, '<workspace>'], [os.homedir(), '<user-home>']]) {
-    for (const variant of [path.replaceAll('\\', '\\\\'), path, path.replaceAll('\\', '/')]) {
-      value = value.replaceAll(variant, alias);
-    }
-  }
-  return value;
-};
-const run = (command, args) => {
-  const result = spawnSync(command, args, { cwd: root, encoding: 'utf8', windowsHide: true });
-  return { exit_code: result.status, stdout: result.stdout ?? '', stderr: result.stderr ?? '',
-    error: result.error ? sanitize(String(result.error)) : null };
-};
-const source = run('git', ['rev-parse', 'HEAD']);
-if (source.exit_code !== 0) throw new Error(source.stderr);
-const inputs = run('git', ['ls-files', '--cached', '--others', '--exclude-standard', '-z']).stdout.split('\0')
-  .filter(path => /(?:\.rs$|(?:^|\/)Cargo\.(?:toml|lock)$)/.test(path));
-if (existsSync(resolve(root, 'Cargo.lock')) && !inputs.includes('Cargo.lock')) inputs.push('Cargo.lock');
-const inputHashes = () => Object.fromEntries(inputs.sort().map(path => [path, hash(readFileSync(resolve(root, path)))]));
-const inputsMatchHead = inputs.every(path => {
-  const blob = run('git', ['show', `HEAD:${path}`]);
-  return blob.exit_code === 0 && hash(blob.stdout) === hash(readFileSync(resolve(root, path)));
-});
-if (phase.startsWith('final') && !inputsMatchHead) throw new Error('Commit Rust inputs before final verification');
-const summary = {
-  source_sha: source.stdout.trim(), phase, started_utc: new Date().toISOString(),
-  rust_inputs_match_head: inputsMatchHead,
-  platform: process.platform, architecture: process.arch, os_release: os.release(),
-  rustc: run('rustc', ['--version', '--verbose']), cargo: run('cargo', ['--version']),
-  inputs_before: inputHashes(), checks: [],
-};
-const gates = phase === 'protocol-before' ? [['test', ['test', '-p', 'cwg-protocol', '--test', 'validation']]]
-  : phase === 'router-before' ? [['test', ['test', '-p', 'cwg-router', '--test', 'audit_regressions']]] : [
+import { hash, redact, reserveAttempt, runCommand, snapshot, snapshotDrift, provenanceLimits } from './support.mjs';
+const rootDirectory = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const gates = [
   ['metadata', ['metadata', '--format-version', '1']],
   ['fmt', ['fmt', '--all', '--', '--check']],
   ['check', ['check', '--workspace', '--all-targets']],
@@ -54,30 +13,62 @@ const gates = phase === 'protocol-before' ? [['test', ['test', '-p', 'cwg-protoc
   ['debug', ['build', '--workspace']],
   ['release', ['build', '--workspace', '--release']],
 ];
-for (const [name, args] of gates) {
-  const result = run('cargo', args);
-  const output = sanitize(`command: cargo ${args.join(' ')}\nexit_code: ${result.exit_code}\nstdout:\n${result.stdout}\nstderr:\n${result.stderr}\nerror: ${result.error}\n`);
-  const log = `${name}.txt`;
-  // Lossless encoding preserves whitespace in a failing rustfmt diff without
-  // making the evidence artifact itself fail git diff --check.
-  const encoding = /[ \t]+$/m.test(output) ? 'json-envelope' : 'plain-text';
-  const published = encoding === 'json-envelope' ? JSON.stringify({transcript: output}, null, 2) + '\n' : output;
-  writeFileSync(resolve(directory, log), published);
-  const matches = [...result.stdout.matchAll(/test result: \w+\. (\d+) passed; (\d+) failed; (\d+) ignored/g)];
-  const tests = name === 'test' ? {
-    passed: matches.reduce((sum, match) => sum + Number(match[1]), 0),
-    failed: matches.reduce((sum, match) => sum + Number(match[2]), 0),
-    ignored: matches.reduce((sum, match) => sum + Number(match[3]), 0),
-  } : null;
-  const entry = { command: `cargo ${args.join(' ')}`, exit_code: result.exit_code,
-    status: result.exit_code === 0 ? 'PASS' : 'FAIL', tests, log, log_encoding: encoding,
-    transcript_sha256: hash(output), log_sha256: hash(published) };
-  summary.checks.push(entry);
-  console.log(JSON.stringify(entry));
+export function runVerification({ root = rootDirectory, phase, run = runCommand, env = process.env, emit = console.log } = {}) {
+  if (!/^(baseline|final(?:-[1-9][0-9]*)?|protocol-before|router-before)$/.test(phase ?? '')) throw new Error('Unknown phase');
+  const attempt = reserveAttempt(root, phase);
+  const clean = value => redact(value, root);
+  const summary = { phase, started_utc: new Date().toISOString(), platform: process.platform,
+    architecture: process.arch, os_release: os.release(), checks: [], failures: [], provenance_limits: provenanceLimits };
+  let before;
+  try {
+    before = snapshot(root, run, env);
+    summary.source_sha = before.head;
+    summary.inputs_before = before.inputs;
+    summary.external_inputs_before = before.external_inputs;
+    summary.environment_before = before.environment;
+    summary.scoped_inputs_match_head = before.inputs_match_head;
+    if (phase.startsWith('final') && !before.inputs_match_head) throw new Error('Commit scoped build/audit inputs before final verification');
+    summary.rustc = run('rustc', ['--version', '--verbose'], { cwd: root, env });
+    summary.cargo = run('cargo', ['--version'], { cwd: root, env });
+    if (summary.rustc.exit_code !== 0 || summary.cargo.exit_code !== 0) throw new Error('Tool version check failed');
+    const selected = phase === 'protocol-before' ? [['test', ['test', '-p', 'cwg-protocol', '--test', 'validation']]]
+      : phase === 'router-before' ? [['test', ['test', '-p', 'cwg-router', '--test', 'audit_regressions']]] : gates;
+    for (const [name, args] of selected) {
+      const result = run('cargo', args, { cwd: root, env });
+      const output = clean(`command: cargo ${args.join(' ')}\nexit_code: ${result.exit_code}\nstdout:\n${result.stdout}\nstderr:\n${result.stderr}\nerror: ${result.error}\n`);
+      const encoding = /[ \t]+$/m.test(output) ? 'json-envelope' : 'plain-text';
+      const published = encoding === 'json-envelope' ? JSON.stringify({ transcript: output }, null, 2) + '\n' : output;
+      const matches = [...result.stdout.matchAll(/test result: \w+\. (\d+) passed; (\d+) failed; (\d+) ignored/g)];
+      const tests = name === 'test' ? {
+        passed: matches.reduce((sum, match) => sum + Number(match[1]), 0),
+        failed: matches.reduce((sum, match) => sum + Number(match[2]), 0),
+        ignored: matches.reduce((sum, match) => sum + Number(match[3]), 0),
+      } : null;
+      const verified = result.exit_code === 0 && !result.error && (!tests || (matches.length > 0 && tests.passed > 0 && tests.failed === 0 && tests.ignored === 0));
+      const entry = { command: `cargo ${args.join(' ')}`, exit_code: result.exit_code,
+        status: verified ? 'PASS' : 'FAIL', tests, log: `${name}.txt`, log_encoding: encoding,
+        transcript_sha256: hash(output), log_sha256: hash(published) };
+      attempt.write(entry.log, published);
+      summary.checks.push(entry);
+      emit(JSON.stringify(entry));
+    }
+  } catch (error) { summary.failures.push(clean(String(error))); }
+  try {
+    const after = snapshot(root, run, env);
+    summary.source_sha_after = after.head;
+    summary.inputs_after = after.inputs;
+    summary.external_inputs_after = after.external_inputs;
+    summary.environment_after = after.environment;
+    if (before) summary.failures.push(...snapshotDrift(before, after));
+  } catch (error) { summary.failures.push(clean(`Final snapshot failed: ${error}`)); }
+  summary.finished_utc = new Date().toISOString();
+  summary.status = summary.failures.length === 0 && summary.checks.length > 0 && summary.checks.every(check => check.status === 'PASS') ? 'PASS' : 'FAIL';
+  summary.exit_code = summary.status === 'PASS' ? 0 : 1;
+  attempt.write('summary.json', clean(JSON.stringify(summary, null, 2)) + '\n');
+  emit(JSON.stringify({ status: summary.status, exit_code: summary.exit_code, failures: summary.failures }));
+  return summary;
 }
-summary.finished_utc = new Date().toISOString();
-// metadata may create the lockfile on the baseline run.
-if (existsSync(resolve(root, 'Cargo.lock')) && !inputs.includes('Cargo.lock')) inputs.push('Cargo.lock');
-summary.inputs_after = inputHashes();
-writeFileSync(resolve(directory, 'summary.json'), sanitize(JSON.stringify(summary, null, 2)) + '\n');
-process.exitCode = summary.checks.every(check => check.status === 'PASS') ? 0 : 1;
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  try { process.exitCode = runVerification({ phase: process.argv[2] }).exit_code; }
+  catch (error) { console.error(redact(String(error), rootDirectory)); process.exitCode = 1; }
+}

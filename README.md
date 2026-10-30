@@ -20,8 +20,12 @@ authority. No containers, VMs, model calls, automatic merge or installed service
 
 The new receiver is implementation source, **not a qualified release**. The
 editing environment lacked Rust and Windows. No claim is made that its new tests
-passed or that this branch currently compiles. The earlier 38-test audit applies
-only to its recorded Protocol/Router source, not to these additions.
+passed or that this branch currently compiles. The earlier audit results apply only to their recorded Protocol/Router sources,
+not to these additions. This branch incorporates the additional security review
+from PR #1 at `a7aa73858a85620f4ca10f09fcf75d86186f662c`, preserving its
+scoped MessageKey, body budgets, binding suspension and all regression tests.
+See [the preserved security review](audit/SECURITY_REVIEW.md); integrating that
+review is not a claim that the combined source has passed new Cargo checks.
 
 ## Receiver workflow
 

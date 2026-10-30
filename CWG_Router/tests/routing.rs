@@ -1,5 +1,5 @@
 use cwg_protocol::{ChatTarget, DeliveryStatus, GithubSource, Message};
-use cwg_router::{BindingKey, Router, RoutingError};
+use cwg_router::{BindingKey, MessageKey, Router, RoutingError};
 use std::sync::{Barrier, Mutex};
 
 fn message() -> Message {
@@ -19,6 +19,12 @@ fn message() -> Message {
         goal_id: "CWG-001".into(),
         body: "Untrusted task context".into(),
     }
+}
+
+fn key(id: &str) -> MessageKey {
+    let mut message = message();
+    message.message_id = id.into();
+    MessageKey::from(&message)
 }
 
 fn register(router: &mut Router, m: &Message) {
@@ -49,6 +55,7 @@ fn independent_repositories_do_not_share_routes_or_comment_dedupe() {
     b.source.repository = "other/repo".into();
     b.message_id = "m2".into();
     b.target.thread_id = "thread-2".into();
+    let b_key = MessageKey::from(&b);
     register(&mut router, &a);
     register(&mut router, &b);
     let mut forged = a.clone();
@@ -59,9 +66,9 @@ fn independent_repositories_do_not_share_routes_or_comment_dedupe() {
     );
     router.enqueue_verified(a).unwrap();
     router.enqueue_verified(b).unwrap();
-    router.begin_delivery("m1").unwrap();
-    assert_eq!(router.state("m1"), Some(DeliveryStatus::Delivering));
-    assert_eq!(router.state("m2"), Some(DeliveryStatus::Verified));
+    router.begin_delivery(&key("m1")).unwrap();
+    assert_eq!(router.state(&key("m1")), Some(DeliveryStatus::Delivering));
+    assert_eq!(router.state(&b_key), Some(DeliveryStatus::Verified));
 }
 
 #[test]
@@ -73,6 +80,7 @@ fn two_logical_codex_chats_in_one_repository_remain_distinct() {
     b.message_id = "m2".into();
     b.source.comment_id = 4;
     b.target.thread_id = "thread-2".into();
+    let b_key = MessageKey::from(&b);
     register(&mut router, &a);
     register(&mut router, &b);
     let mut wrong = a.clone();
@@ -83,8 +91,8 @@ fn two_logical_codex_chats_in_one_repository_remain_distinct() {
     );
     router.enqueue_verified(a).unwrap();
     router.enqueue_verified(b).unwrap();
-    assert_eq!(router.state("m1"), Some(DeliveryStatus::Verified));
-    assert_eq!(router.state("m2"), Some(DeliveryStatus::Verified));
+    assert_eq!(router.state(&key("m1")), Some(DeliveryStatus::Verified));
+    assert_eq!(router.state(&b_key), Some(DeliveryStatus::Verified));
 }
 
 #[test]
@@ -95,6 +103,7 @@ fn simultaneous_goals_can_be_queued_with_external_serialization() {
     b.goal_id = "CWG-002".into();
     b.message_id = "m2".into();
     b.source.comment_id = 4;
+    let b_key = MessageKey::from(&b);
     register(&mut router, &a);
     register(&mut router, &b);
     let router = Mutex::new(router);
@@ -113,8 +122,8 @@ fn simultaneous_goals_can_be_queued_with_external_serialization() {
         second.join().unwrap().unwrap();
     });
     let router = router.into_inner().unwrap();
-    assert_eq!(router.state("m1"), Some(DeliveryStatus::Verified));
-    assert_eq!(router.state("m2"), Some(DeliveryStatus::Verified));
+    assert_eq!(router.state(&key("m1")), Some(DeliveryStatus::Verified));
+    assert_eq!(router.state(&b_key), Some(DeliveryStatus::Verified));
 }
 
 #[test]
@@ -126,7 +135,7 @@ fn duplicate_message_id_cannot_replace_original() {
         router.enqueue_verified(duplicate),
         Err(RoutingError::Conflict)
     );
-    assert_eq!(router.state("m1"), Some(DeliveryStatus::Verified));
+    assert_eq!(router.state(&key("m1")), Some(DeliveryStatus::Verified));
     let mut new = message();
     new.message_id = "m2".into();
     new.source.comment_id = 99;
@@ -142,7 +151,7 @@ fn duplicate_comment_id_cannot_create_new_message() {
         router.enqueue_verified(duplicate),
         Err(RoutingError::Conflict)
     );
-    assert_eq!(router.state("m2"), None);
+    assert_eq!(router.state(&key("m2")), None);
     let mut new = message();
     new.message_id = "m2".into();
     new.source.comment_id = 99;
@@ -197,7 +206,7 @@ fn unknown_repository_or_goal_binding_is_refused() {
     );
 }
 
-type Action = fn(&mut Router, &str) -> Result<(), RoutingError>;
+type Action = fn(&mut Router, &MessageKey) -> Result<(), RoutingError>;
 const ACTIONS: [(&str, Action); 6] = [
     ("begin", Router::begin_delivery),
     ("delivered", Router::mark_delivered),
@@ -212,27 +221,27 @@ fn delivery_of_missing_message_is_refused_by_every_operation() {
     let mut router = queued();
     for (name, action) in ACTIONS {
         assert_eq!(
-            action(&mut router, "missing"),
+            action(&mut router, &key("missing")),
             Err(RoutingError::StaleOrWrongState),
             "{name}"
         );
-        assert_eq!(router.state("missing"), None);
-        assert_eq!(router.state("m1"), Some(DeliveryStatus::Verified));
+        assert_eq!(router.state(&key("missing")), None);
+        assert_eq!(router.state(&key("m1")), Some(DeliveryStatus::Verified));
     }
 }
 
 #[test]
 fn unknown_outcome_remains_non_retryable_and_replay_protected() {
     let mut router = queued();
-    router.begin_delivery("m1").unwrap();
-    router.mark_unknown("m1").unwrap();
+    router.begin_delivery(&key("m1")).unwrap();
+    router.mark_unknown(&key("m1")).unwrap();
     for (name, action) in ACTIONS.into_iter().filter(|(name, _)| *name != "block") {
         assert_eq!(
-            action(&mut router, "m1"),
+            action(&mut router, &key("m1")),
             Err(RoutingError::StaleOrWrongState),
             "{name}"
         );
-        assert_eq!(router.state("m1"), Some(DeliveryStatus::Unknown));
+        assert_eq!(router.state(&key("m1")), Some(DeliveryStatus::Unknown));
     }
     assert_eq!(
         router.enqueue_verified(message()),
@@ -241,12 +250,12 @@ fn unknown_outcome_remains_non_retryable_and_replay_protected() {
     let mut replay = message();
     replay.message_id = "m2".into();
     assert_eq!(router.enqueue_verified(replay), Err(RoutingError::Conflict));
-    router.block_unknown("m1").unwrap();
+    router.block_unknown(&key("m1")).unwrap();
     assert_eq!(
-        router.begin_delivery("m1"),
+        router.begin_delivery(&key("m1")),
         Err(RoutingError::StaleOrWrongState)
     );
-    assert_eq!(router.state("m1"), Some(DeliveryStatus::Blocked));
+    assert_eq!(router.state(&key("m1")), Some(DeliveryStatus::Blocked));
 }
 
 fn at(status: DeliveryStatus) -> Router {
@@ -254,27 +263,27 @@ fn at(status: DeliveryStatus) -> Router {
     if status == DeliveryStatus::Verified {
         return router;
     }
-    router.begin_delivery("m1").unwrap();
+    router.begin_delivery(&key("m1")).unwrap();
     if status == DeliveryStatus::Delivering {
         return router;
     }
     if matches!(status, DeliveryStatus::Unknown | DeliveryStatus::Blocked) {
-        router.mark_unknown("m1").unwrap();
+        router.mark_unknown(&key("m1")).unwrap();
         if status == DeliveryStatus::Blocked {
-            router.block_unknown("m1").unwrap();
+            router.block_unknown(&key("m1")).unwrap();
         }
         return router;
     }
-    router.mark_delivered("m1").unwrap();
+    router.mark_delivered(&key("m1")).unwrap();
     if status == DeliveryStatus::Delivered {
         return router;
     }
-    router.acknowledge("m1").unwrap();
+    router.acknowledge(&key("m1")).unwrap();
     if status == DeliveryStatus::Acknowledged {
         return router;
     }
     assert_eq!(status, DeliveryStatus::Completed);
-    router.complete("m1").unwrap();
+    router.complete(&key("m1")).unwrap();
     router
 }
 
@@ -303,16 +312,16 @@ fn all_reachable_states_enforce_exact_transition_matrix() {
             let mut router = at(status);
             match expected {
                 Some(next) => {
-                    action(&mut router, "m1").unwrap();
-                    assert_eq!(router.state("m1"), Some(next));
+                    action(&mut router, &key("m1")).unwrap();
+                    assert_eq!(router.state(&key("m1")), Some(next));
                 }
                 None => {
                     assert_eq!(
-                        action(&mut router, "m1"),
+                        action(&mut router, &key("m1")),
                         Err(RoutingError::StaleOrWrongState),
                         "{status:?} {name}"
                     );
-                    assert_eq!(router.state("m1"), Some(status));
+                    assert_eq!(router.state(&key("m1")), Some(status));
                 }
             }
         }
@@ -425,11 +434,11 @@ fn competing_in_memory_claims_have_one_winner_under_external_mutex() {
     let results = std::thread::scope(|scope| {
         let first = scope.spawn(|| {
             barrier.wait();
-            router.lock().unwrap().begin_delivery("m1")
+            router.lock().unwrap().begin_delivery(&key("m1"))
         });
         let second = scope.spawn(|| {
             barrier.wait();
-            router.lock().unwrap().begin_delivery("m1")
+            router.lock().unwrap().begin_delivery(&key("m1"))
         });
         barrier.wait();
         [first.join().unwrap(), second.join().unwrap()]
@@ -443,7 +452,7 @@ fn competing_in_memory_claims_have_one_winner_under_external_mutex() {
         1
     );
     assert_eq!(
-        router.into_inner().unwrap().state("m1"),
+        router.into_inner().unwrap().state(&key("m1")),
         Some(DeliveryStatus::Delivering)
     );
 }

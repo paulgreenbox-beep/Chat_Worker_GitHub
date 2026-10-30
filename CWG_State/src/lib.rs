@@ -2,7 +2,7 @@
 //! delivery state machine. Callers must authenticate before put_verified.
 #![forbid(unsafe_code)]
 use cwg_protocol::{ChatTarget, DeliveryStatus, Message, validate, validate_binding};
-use cwg_router::{BindingKey, Router};
+use cwg_router::{BindingKey, MessageKey, Router};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -116,13 +116,14 @@ impl View {
             Event::Advance { binding_id, message_id, transition } => {
                 let item = self.messages.get(message_id).ok_or("MESSAGE_UNKNOWN")?;
                 if &item.binding_id != binding_id { return Err("MESSAGE_UNKNOWN"); }
+                let key = MessageKey::from(&item.message);
                 let result = match transition {
-                    Transition::Begin => self.router.begin_delivery(message_id),
-                    Transition::Accepted => self.router.mark_delivered(message_id),
-                    Transition::Unknown => self.router.mark_unknown(message_id),
-                    Transition::Acknowledge => self.router.acknowledge(message_id),
-                    Transition::Complete => self.router.complete(message_id),
-                    Transition::Block => self.router.block_unknown(message_id),
+                    Transition::Begin => self.router.begin_delivery(&key),
+                    Transition::Accepted => self.router.mark_delivered(&key),
+                    Transition::Unknown => self.router.mark_unknown(&key),
+                    Transition::Acknowledge => self.router.acknowledge(&key),
+                    Transition::Complete => self.router.complete(&key),
+                    Transition::Block => self.router.block_unknown(&key),
                 };
                 result.map_err(|_| "WRONG_STATE")?;
             }
@@ -211,7 +212,7 @@ impl Store {
                 let row = &v.messages[id];
                 (row.binding_id == binding.id).then(|| Item {
                     binding_id: row.binding_id.clone(), generation: row.generation,
-                    message: row.message.clone(), status: v.router.state(id).expect("replayed message"),
+                    message: row.message.clone(), status: v.router.state(&MessageKey::from(&row.message)).expect("replayed message"),
                 })
             }).take(limit).collect();
             Ok((items, None))

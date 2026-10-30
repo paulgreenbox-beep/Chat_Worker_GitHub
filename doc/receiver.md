@@ -6,8 +6,11 @@ This change adds Rust source for a Windows-native foreground receiver, not a
 placeholder which always refuses. `cwg-github serve` can validate a webhook,
 reconcile its author/source with GitHub and commit a message to a local inbox.
 **Compilation and native execution of this new source are NOT_RUN.** Review and
-run the commands below before deployment. The 38-test audit on the earlier
-Protocol/Router revision does not qualify this new code.
+run the commands below before deployment. The earlier
+Protocol/Router audits do not qualify this new code. The concurrent security
+review in PR #1 at `a7aa73858a85620f4ca10f09fcf75d86186f662c` is incorporated
+without changing its source or tests. Journal transitions now use its exact
+repository/GOAL/target/message MessageKey, not unscoped message IDs.
 
 Implemented path:
 
@@ -118,7 +121,8 @@ preconditions and are not remotely exposed.
 A torn/invalid record, sequence gap or capacity limit blocks access without
 truncation. A write/fsync error reports STATE_COMMIT_UNKNOWN: inspect/reconcile;
 do not assume the append did not happen. Bounds: 128 bindings, 1,024 messages,
-20,000 records and 32 MiB journal, 512 KiB per HTTP/JSON/record input. There is no
+20,000 records and 32 MiB journal, 512 KiB per HTTP/JSON/record input. The
+underlying Router additionally enforces its 16 MiB total message-body budget. There is no
 automatic pruning; deleting the journal would destroy replay protection. Archive
 and compaction require a later reviewed implementation preserving tombstones.
 

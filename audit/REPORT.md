@@ -1,5 +1,7 @@
 # CWG build, test and source audit — 2026-10-30
 
+Historical first-pass evidence for `7f9dff0a09717abec73118f45b67c1c733122e26`. The subsequent PR review changed Protocol/Router APIs and audit tooling; see [security follow-up](SECURITY_REVIEW.md) for the latest checked source and results. Statements about unbounded/global-ID behavior and dev-only serde_json below describe that earlier revision.
+
 ## Source identity and environment
 
 - Requested baseline and fetched `origin/main`: `a409120bbafeaefd7ad7569b7d5704e2ad6122d5`. The initial comparison was empty; main was fetched and checked again before publication.
