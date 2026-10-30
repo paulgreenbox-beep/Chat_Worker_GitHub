@@ -6,6 +6,7 @@ type Handle = *mut c_void;
 const OPTION_CONNECT_RETRIES: u32 = 4;
 const OPTION_DISABLE_FEATURE: u32 = 63;
 const OPTION_SECURE_PROTOCOLS: u32 = 84;
+const OPTION_DISABLE_GLOBAL_POOLING: u32 = 195;
 const TLS_1_2: u32 = 0x800;
 // Explicit per-session policy, independent of host defaults: TLS 1.2 and one
 // connection attempt. No application retry or legacy-TLS fallback is added.
@@ -13,11 +14,9 @@ fn session_options() -> &'static [(u32, u32)] {
     &[
         (OPTION_SECURE_PROTOCOLS, TLS_1_2),
         (OPTION_CONNECT_RETRIES, 1),
+        // Do not share transport state with separately owned sessions.
+        (OPTION_DISABLE_GLOBAL_POOLING, 1),
     ]
-}
-#[cfg(test)]
-fn diagnostic_private_pool() -> bool {
-    std::env::var_os("CWG_NATIVE_PRIVATE_POOL").as_deref() == Some(std::ffi::OsStr::new("1"))
 }
 fn close_status(closed: i32) -> Result<()> {
     if closed == 0 {
@@ -298,17 +297,6 @@ fn request(
                     session,
                     option,
                     (&mut value as *mut u32).cast(),
-                    4,
-                ))?;
-            }
-            // Controlled A/B only. No production environment override exists.
-            #[cfg(test)]
-            if diagnostic_private_pool() {
-                let mut disabled = 1u32;
-                ok(WinHttpSetOption(
-                    session,
-                    195,
-                    (&mut disabled as *mut u32).cast(),
                     4,
                 ))?;
             }

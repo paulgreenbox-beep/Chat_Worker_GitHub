@@ -35,6 +35,11 @@ operator-configured namespace, not proof of real Codex account/thread ownership.
 
 Use Windows 10 or later with its existing SDK/MSVC build tools and the reviewed
 Rust toolchain (the previous audit used 1.97.1; file locking requires >=1.89).
+The native WinHTTP policy options, including disabling global cross-session
+pooling, must be supported by the host. Unsupported options fail closed;
+the exact Windows build qualified here is recorded in the audit, not every
+Windows 10 build. Separate sessions do not share transport state; this may add
+TLS handshakes within the existing deadline budget.
 No new registry crate/version is introduced. Windows uses system BCrypt/WinHTTP;
 serde and serde_json already existed in the workspace lock. Only local package
 entries were added to Cargo.lock; Cargo must still validate that lockfile.

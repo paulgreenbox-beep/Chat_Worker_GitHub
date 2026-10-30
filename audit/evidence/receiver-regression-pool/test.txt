@@ -1,0 +1,30 @@
+command: cargo test -p cwg-github --bin cwg-github --locked --offline audit_sessions_refuse_global -- --nocapture
+CARGO_NET_OFFLINE=true
+exit_code: 101
+stdout:
+
+running 1 test
+test windows::tests::audit_sessions_refuse_global_connection_pooling ... FAILED
+
+failures:
+
+failures:
+    windows::tests::audit_sessions_refuse_global_connection_pooling
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 20 filtered out; finished in 0.00s
+
+
+stderr:
+   Compiling cwg-state v0.1.0 (<workspace>\CWG_State)
+   Compiling cwg-github v0.1.0 (<workspace>\CWG_GitHub)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.60s
+     Running unittests src\main.rs (target\debug\deps\cwg_github-3805a0d3b3314014.exe)
+
+thread 'windows::tests::audit_sessions_refuse_global_connection_pooling' (30864) panicked at CWG_GitHub\src\windows.rs:599:9:
+assertion `left == right` failed: each owned session must explicitly refuse cross-session connection pooling
+  left: None
+ right: Some(1)
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+error: test failed, to rerun pass `-p cwg-github --bin cwg-github`
+
+error: null
