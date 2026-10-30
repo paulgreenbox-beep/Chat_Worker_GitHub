@@ -27,7 +27,10 @@ impl<'de> Deserialize<'de> for Unique {
             fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 f.write_str("JSON with unique object keys")
             }
-            fn visit_map<M: MapAccess<'de>>(self, mut map: M) -> std::result::Result<Unique, M::Error> {
+            fn visit_map<M: MapAccess<'de>>(
+                self,
+                mut map: M,
+            ) -> std::result::Result<Unique, M::Error> {
                 let mut keys = BTreeSet::new();
                 while let Some(key) = map.next_key::<String>()? {
                     if !keys.insert(key) {
@@ -37,16 +40,31 @@ impl<'de> Deserialize<'de> for Unique {
                 }
                 Ok(Unique)
             }
-            fn visit_seq<S: SeqAccess<'de>>(self, mut seq: S) -> std::result::Result<Unique, S::Error> {
+            fn visit_seq<S: SeqAccess<'de>>(
+                self,
+                mut seq: S,
+            ) -> std::result::Result<Unique, S::Error> {
                 while seq.next_element::<Unique>()?.is_some() {}
                 Ok(Unique)
             }
-            fn visit_bool<E: serde::de::Error>(self, _: bool) -> std::result::Result<Unique, E> { Ok(Unique) }
-            fn visit_i64<E: serde::de::Error>(self, _: i64) -> std::result::Result<Unique, E> { Ok(Unique) }
-            fn visit_u64<E: serde::de::Error>(self, _: u64) -> std::result::Result<Unique, E> { Ok(Unique) }
-            fn visit_f64<E: serde::de::Error>(self, _: f64) -> std::result::Result<Unique, E> { Ok(Unique) }
-            fn visit_str<E: serde::de::Error>(self, _: &str) -> std::result::Result<Unique, E> { Ok(Unique) }
-            fn visit_unit<E: serde::de::Error>(self) -> std::result::Result<Unique, E> { Ok(Unique) }
+            fn visit_bool<E: serde::de::Error>(self, _: bool) -> std::result::Result<Unique, E> {
+                Ok(Unique)
+            }
+            fn visit_i64<E: serde::de::Error>(self, _: i64) -> std::result::Result<Unique, E> {
+                Ok(Unique)
+            }
+            fn visit_u64<E: serde::de::Error>(self, _: u64) -> std::result::Result<Unique, E> {
+                Ok(Unique)
+            }
+            fn visit_f64<E: serde::de::Error>(self, _: f64) -> std::result::Result<Unique, E> {
+                Ok(Unique)
+            }
+            fn visit_str<E: serde::de::Error>(self, _: &str) -> std::result::Result<Unique, E> {
+                Ok(Unique)
+            }
+            fn visit_unit<E: serde::de::Error>(self) -> std::result::Result<Unique, E> {
+                Ok(Unique)
+            }
         }
         d.deserialize_any(Walk)
     }
@@ -54,7 +72,9 @@ impl<'de> Deserialize<'de> for Unique {
 
 pub fn parse_signature(header: &str) -> Result<[u8; 32]> {
     let hex = header.strip_prefix("sha256=").ok_or("SIGNATURE_FORMAT")?;
-    if hex.len() != 64 { return Err("SIGNATURE_FORMAT"); }
+    if hex.len() != 64 {
+        return Err("SIGNATURE_FORMAT");
+    }
     let mut out = [0; 32];
     for (i, pair) in hex.as_bytes().chunks_exact(2).enumerate() {
         let digit = |b| match b {
@@ -79,14 +99,22 @@ fn same_mac(left: &[u8; 32], right: &[u8; 32]) -> bool {
 }
 
 pub fn verify_signature(secret: &[u8], bytes: &[u8], header: &str) -> Result<()> {
-    if secret.len() < 16 || secret.len() > 1024 { return Err("SECRET_SIZE"); }
+    if secret.len() < 16 || secret.len() > 1024 {
+        return Err("SECRET_SIZE");
+    }
     let supplied = parse_signature(header)?;
     let expected = hmac(secret, bytes)?;
-    if same_mac(&supplied, &expected) { Ok(()) } else { Err("SIGNATURE_MISMATCH") }
+    if same_mac(&supplied, &expected) {
+        Ok(())
+    } else {
+        Err("SIGNATURE_MISMATCH")
+    }
 }
 
 #[cfg(not(windows))]
-fn hmac(_: &[u8], _: &[u8]) -> Result<[u8; 32]> { Err("WINDOWS_CNG_REQUIRED") }
+fn hmac(_: &[u8], _: &[u8]) -> Result<[u8; 32]> {
+    Err("WINDOWS_CNG_REQUIRED")
+}
 
 #[cfg(windows)]
 mod windows_cng;
@@ -99,28 +127,40 @@ fn hmac(secret: &[u8], bytes: &[u8]) -> Result<[u8; 32]> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[test] fn duplicates_in_ignored_nested_fields_are_rejected() {
+    #[test]
+    fn duplicates_in_ignored_nested_fields_are_rejected() {
         let raw = br#"{"ok":1,"extension":{"a":1,"a":2}}"#;
         assert!(decode::<serde_json::Value>(raw, 100).is_err());
     }
-    #[test] fn bounds_and_trailing_json_are_rejected() {
+    #[test]
+    fn bounds_and_trailing_json_are_rejected() {
         assert!(decode::<serde_json::Value>(b"{}", 1).is_err());
         assert!(decode::<serde_json::Value>(b"{}{}", 100).is_err());
         assert!(decode::<serde_json::Value>(br#"{"x":"\ud800"}"#, 100).is_err());
     }
-    #[test] fn independent_objects_can_reuse_keys() {
+    #[test]
+    fn independent_objects_can_reuse_keys() {
         assert!(decode::<serde_json::Value>(br#"[{"x":1},{"x":2},null,true]"#, 100).is_ok());
     }
-    #[test] fn malformed_mac_rejected() {
-        for h in ["", "sha1=abc", "sha256=1", "sha256=zz"] { assert!(parse_signature(h).is_err()); }
+    #[test]
+    fn malformed_mac_rejected() {
+        for h in ["", "sha1=abc", "sha256=1", "sha256=zz"] {
+            assert!(parse_signature(h).is_err());
+        }
     }
-    #[test] fn comparison_checks_all_positions() {
+    #[test]
+    fn comparison_checks_all_positions() {
         let a = [0; 32];
         assert!(same_mac(&a, &a));
-        for i in 0..32 { let mut b = a; b[i] = 1; assert!(!same_mac(&a, &b)); }
+        for i in 0..32 {
+            let mut b = a;
+            b[i] = 1;
+            assert!(!same_mac(&a, &b));
+        }
     }
     #[cfg(windows)]
-    #[test] fn github_official_hmac_vector_and_tamper() {
+    #[test]
+    fn github_official_hmac_vector_and_tamper() {
         let mac = "sha256=757107ea0eb2509fc211221cce984b8a37570b6d7586c22c46f4379c8b043e17";
         assert!(verify_signature(b"It's a Secret to Everybody", b"Hello, World!", mac).is_ok());
         assert!(verify_signature(b"It's a Secret to Everybody", b"Hello, world!", mac).is_err());

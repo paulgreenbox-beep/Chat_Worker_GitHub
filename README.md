@@ -12,20 +12,20 @@ authority. No containers, VMs, model calls, automatic merge or installed service
 | Component | Source in this branch | Qualification |
 |---|---|---|
 | CWG_Protocol / CWG_Router | Existing validated contracts and routing | Prior audit at its recorded SHA; unchanged here |
-| CWG_Security | Bounded duplicate-key JSON checks; Windows CNG HMAC | New Rust/native tests NOT_RUN |
-| CWG_State | Bounded file-locked/fsynced persistent inbox; replay protection | New Rust/native tests NOT_RUN |
-| CWG_GitHub | Foreground Windows receiver, fixed-host API reconciliation, local inbox CLI | Build/live webhook E2E NOT_RUN |
+| CWG_Security | Bounded object-only JSON checks; Windows CNG HMAC; handle-based Windows ACL checks | Native results and exact SHA in the Windows audit below |
+| CWG_State | Bounded protected file-locked/fsynced inbox; persistent replay protection | Native subprocess/fault results in the Windows audit; power-loss durability NOT_VERIFIED |
+| CWG_GitHub | Foreground Windows receiver, fixed-host API reconciliation, local inbox CLI | Controlled-loopback receiver-to-inbox integration; live GitHub/Codex delivery NOT_RUN |
 | CWG_MCP / CWG_Worker | Planned MCP and Codex adapter | NOT_IMPLEMENTED |
 | CWG_CheckBroker | Optional independent check integration | Disabled; not needed for ordinary messages |
 
-The new receiver is implementation source, **not a qualified release**. The
-editing environment lacked Rust and Windows. No claim is made that its new tests
-passed or that this branch currently compiles. The earlier audit results apply only to their recorded Protocol/Router sources,
-not to these additions. This branch incorporates the additional security review
+The receiver is **not a qualified deployment**. Native Windows build, test and
+security evidence, including initial failures and their fixes, is recorded in
+[the Windows verification report](audit/RECEIVER_WINDOWS_VERIFICATION.md).
+Results apply to the exact source SHA recorded there. This branch incorporates the additional security review
 from PR #1 at `a7aa73858a85620f4ca10f09fcf75d86186f662c`, preserving its
 scoped MessageKey, body budgets, binding suspension and all regression tests.
 See [the preserved security review](audit/SECURITY_REVIEW.md); integrating that
-review is not a claim that the combined source has passed new Cargo checks.
+review is separate from the native receiver verification.
 
 ## Receiver workflow
 
@@ -52,8 +52,8 @@ cargo build --workspace --locked
 ```
 
 The lock retains existing external versions/checksums; only new local workspace
-packages are listed. Cargo lock validation remains NOT_RUN. Once the dependencies
-are cached, repeat with --offline. The implementation uses Windows system APIs
+packages are listed. The native audit records locked and offline verification.
+Once the dependencies are cached, repeat with --offline. The implementation uses Windows system APIs
 instead of adding new external crypto/network packages.
 
 Read [AGENTS.md](AGENTS.md), [SECURITY.md](SECURITY.md), the baseline

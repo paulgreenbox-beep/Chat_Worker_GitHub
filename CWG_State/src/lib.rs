@@ -88,16 +88,25 @@ impl<'de> Deserialize<'de> for Binding {
 }
 impl Binding {
     pub fn validate(&self) -> Result<()> {
-        validate_binding(&self.repository, &self.goal_id, &self.target).map_err(|_| "BINDING_INVALID")?;
-        if self.repository_id == 0 || self.owner_id == 0 || self.issue_number == 0 || self.generation == 0
-            || !identifier(&self.id) || !identifier(&self.account_id) {
+        validate_binding(&self.repository, &self.goal_id, &self.target)
+            .map_err(|_| "BINDING_INVALID")?;
+        if self.repository_id == 0
+            || self.owner_id == 0
+            || self.issue_number == 0
+            || self.generation == 0
+            || !identifier(&self.id)
+            || !identifier(&self.account_id)
+        {
             return Err("BINDING_IDENTITY");
         }
         Ok(())
     }
 }
 fn identifier(s: &str) -> bool {
-    !s.is_empty() && s.len() <= 128 && s.bytes().all(|c| c.is_ascii_alphanumeric() || b"-_:".contains(&c))
+    !s.is_empty()
+        && s.len() <= 128
+        && s.bytes()
+            .all(|c| c.is_ascii_alphanumeric() || b"-_:".contains(&c))
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -120,8 +129,13 @@ struct PendingWire {
 impl<'de> Deserialize<'de> for Pending {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> std::result::Result<Self, D::Error> {
         let raw: PendingWire = object_only(deserializer)?;
-        Ok(Self { binding_id: raw.binding_id, generation: raw.generation,
-            repository_id: raw.repository_id, delivery_id: raw.delivery_id, message: raw.message })
+        Ok(Self {
+            binding_id: raw.binding_id,
+            generation: raw.generation,
+            repository_id: raw.repository_id,
+            delivery_id: raw.delivery_id,
+            message: raw.message,
+        })
     }
 }
 #[derive(Clone, Debug, Serialize)]
@@ -133,24 +147,55 @@ pub struct Item {
 }
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum Transition { Begin, Accepted, Unknown, Acknowledge, Complete, Block }
+pub enum Transition {
+    Begin,
+    Accepted,
+    Unknown,
+    Acknowledge,
+    Complete,
+    Block,
+}
 #[derive(Serialize, Deserialize)]
 #[serde(tag = "kind", deny_unknown_fields)]
 enum Event {
-    Bind { binding: Binding },
-    Put { item: Pending },
-    DeliveryAlias { binding_id: String, message_id: String, delivery_id: String },
-    Advance { binding_id: String, message_id: String, transition: Transition },
+    Bind {
+        binding: Binding,
+    },
+    Put {
+        item: Pending,
+    },
+    DeliveryAlias {
+        binding_id: String,
+        message_id: String,
+        delivery_id: String,
+    },
+    Advance {
+        binding_id: String,
+        message_id: String,
+        transition: Transition,
+    },
 }
 #[derive(Serialize)]
-struct Record { schema: String, sequence: u64, event: Event }
+struct Record {
+    schema: String,
+    sequence: u64,
+    event: Event,
+}
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-struct RecordWire { schema: String, sequence: u64, event: Event }
+struct RecordWire {
+    schema: String,
+    sequence: u64,
+    event: Event,
+}
 impl<'de> Deserialize<'de> for Record {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> std::result::Result<Self, D::Error> {
         let raw: RecordWire = object_only(deserializer)?;
-        Ok(Self { schema: raw.schema, sequence: raw.sequence, event: raw.event })
+        Ok(Self {
+            schema: raw.schema,
+            sequence: raw.sequence,
+            event: raw.event,
+        })
     }
 }
 #[derive(Default)]
@@ -167,43 +212,85 @@ impl View {
         match event {
             Event::Bind { binding } => {
                 binding.validate()?;
-                if self.bindings.len() >= 128 || self.bindings.contains_key(&binding.id)
-                    || self.bindings.values().any(|b| b.repository_id == binding.repository_id && b.issue_number == binding.issue_number) {
+                if self.bindings.len() >= 128
+                    || self.bindings.contains_key(&binding.id)
+                    || self.bindings.values().any(|b| {
+                        b.repository_id == binding.repository_id
+                            && b.issue_number == binding.issue_number
+                    })
+                {
                     return Err("BINDING_CONFLICT");
                 }
-                self.router.register(BindingKey { repository: binding.repository.clone(), goal_id: binding.goal_id.clone() }, binding.target.clone()).map_err(|_| "BINDING_CONFLICT")?;
+                self.router
+                    .register(
+                        BindingKey {
+                            repository: binding.repository.clone(),
+                            goal_id: binding.goal_id.clone(),
+                        },
+                        binding.target.clone(),
+                    )
+                    .map_err(|_| "BINDING_CONFLICT")?;
                 self.bindings.insert(binding.id.clone(), binding.clone());
             }
             Event::Put { item } => {
                 validate(&item.message).map_err(|_| "MESSAGE_INVALID")?;
-                let b = self.bindings.get(&item.binding_id).ok_or("BINDING_UNKNOWN")?;
-                if b.repository_id != item.repository_id || b.generation != item.generation
-                    || !b.repository.eq_ignore_ascii_case(&item.message.source.repository)
-                    || b.issue_number != item.message.source.issue_number || b.goal_id != item.message.goal_id
-                    || b.target != item.message.target || !identifier(&item.delivery_id)
-                    || item.message.message_id != format!("gh:{}:{}", b.repository_id, item.message.source.comment_id) {
+                let b = self
+                    .bindings
+                    .get(&item.binding_id)
+                    .ok_or("BINDING_UNKNOWN")?;
+                if b.repository_id != item.repository_id
+                    || b.generation != item.generation
+                    || !b
+                        .repository
+                        .eq_ignore_ascii_case(&item.message.source.repository)
+                    || b.issue_number != item.message.source.issue_number
+                    || b.goal_id != item.message.goal_id
+                    || b.target != item.message.target
+                    || !identifier(&item.delivery_id)
+                    || item.message.message_id
+                        != format!("gh:{}:{}", b.repository_id, item.message.source.comment_id)
+                {
                     return Err("MESSAGE_BINDING_MISMATCH");
                 }
-                if self.messages.len() >= MAX_MESSAGES || self.deliveries.contains_key(&item.delivery_id)
-                    || self.messages.contains_key(&item.message.message_id) {
+                if self.messages.len() >= MAX_MESSAGES
+                    || self.deliveries.contains_key(&item.delivery_id)
+                    || self.messages.contains_key(&item.message.message_id)
+                {
                     return Err("INBOX_CAPACITY_OR_REPLAY");
                 }
-                self.router.enqueue_verified(item.message.clone()).map_err(|_| "MESSAGE_CONFLICT")?;
-                self.deliveries.insert(item.delivery_id.clone(), item.message.message_id.clone());
+                self.router
+                    .enqueue_verified(item.message.clone())
+                    .map_err(|_| "MESSAGE_CONFLICT")?;
+                self.deliveries
+                    .insert(item.delivery_id.clone(), item.message.message_id.clone());
                 self.order.push(item.message.message_id.clone());
-                self.messages.insert(item.message.message_id.clone(), item.clone());
+                self.messages
+                    .insert(item.message.message_id.clone(), item.clone());
             }
-            Event::DeliveryAlias { binding_id, message_id, delivery_id } => {
+            Event::DeliveryAlias {
+                binding_id,
+                message_id,
+                delivery_id,
+            } => {
                 let item = self.messages.get(message_id).ok_or("MESSAGE_UNKNOWN")?;
-                if &item.binding_id != binding_id || !identifier(delivery_id)
-                    || self.deliveries.contains_key(delivery_id) {
+                if &item.binding_id != binding_id
+                    || !identifier(delivery_id)
+                    || self.deliveries.contains_key(delivery_id)
+                {
                     return Err("DELIVERY_CONFLICT");
                 }
-                self.deliveries.insert(delivery_id.clone(), message_id.clone());
+                self.deliveries
+                    .insert(delivery_id.clone(), message_id.clone());
             }
-            Event::Advance { binding_id, message_id, transition } => {
+            Event::Advance {
+                binding_id,
+                message_id,
+                transition,
+            } => {
                 let item = self.messages.get(message_id).ok_or("MESSAGE_UNKNOWN")?;
-                if &item.binding_id != binding_id { return Err("MESSAGE_UNKNOWN"); }
+                if &item.binding_id != binding_id {
+                    return Err("MESSAGE_UNKNOWN");
+                }
                 let key = MessageKey::from(&item.message);
                 let result = match transition {
                     Transition::Begin => self.router.begin_delivery(&key),
@@ -219,16 +306,24 @@ impl View {
         Ok(())
     }
     fn binding(&self, b: &Binding) -> Result<()> {
-        if self.bindings.get(&b.id) == Some(b) { Ok(()) } else { Err("BINDING_STALE_OR_UNKNOWN") }
+        if self.bindings.get(&b.id) == Some(b) {
+            Ok(())
+        } else {
+            Err("BINDING_STALE_OR_UNKNOWN")
+        }
     }
 }
 
 /// The parent directory must already exist and be protected from other users.
 /// This file lock is concurrency control, not an OS security sandbox.
-pub struct Store { root: PathBuf }
+pub struct Store {
+    root: PathBuf,
+}
 impl Store {
     pub fn open(root: &Path) -> Result<Self> {
-        if !root.is_absolute() || !root.is_dir() { return Err("STATE_ROOT_REQUIRED"); }
+        if !root.is_absolute() || !root.is_dir() {
+            return Err("STATE_ROOT_REQUIRED");
+        }
         no_links(root)?;
         // Inspect actual opened directory/file owners and DACLs before accepting
         // the store. The guard pins checked ancestors during this inspection.
@@ -243,13 +338,25 @@ impl Store {
         let mut view = load(file)?;
         let (value, event) = op(&mut view)?;
         if let Some(event) = event {
-            if view.sequence >= MAX_RECORDS { return Err("JOURNAL_CAPACITY"); }
+            if view.sequence >= MAX_RECORDS {
+                return Err("JOURNAL_CAPACITY");
+            }
             view.apply(&event)?;
-            let record = Record { schema: "cwg-journal-v1".into(), sequence: view.sequence + 1, event };
+            let record = Record {
+                schema: "cwg-journal-v1".into(),
+                sequence: view.sequence + 1,
+                event,
+            };
             let mut bytes = serde_json::to_vec(&record).map_err(|_| "JOURNAL_ENCODE")?;
             bytes.push(b'\n');
-            if bytes.len() > MAX_RECORD || file.metadata().map_err(|_| "STATE_METADATA")?.len()
-                .checked_add(bytes.len() as u64).is_none_or(|total| total > MAX_JOURNAL) {
+            if bytes.len() > MAX_RECORD
+                || file
+                    .metadata()
+                    .map_err(|_| "STATE_METADATA")?
+                    .len()
+                    .checked_add(bytes.len() as u64)
+                    .is_none_or(|total| total > MAX_JOURNAL)
+            {
                 return Err("JOURNAL_CAPACITY");
             }
             // Any error here has an uncertain persistence outcome: caller MUST
@@ -268,72 +375,133 @@ impl Store {
         self.transact(|v| match v.bindings.get(&binding.id) {
             Some(old) if old == binding => Ok(((), None)),
             Some(_) => Err("BINDING_IMMUTABLE"),
-            None => Ok(((), Some(Event::Bind { binding: binding.clone() }))),
+            None => Ok((
+                (),
+                Some(Event::Bind {
+                    binding: binding.clone(),
+                }),
+            )),
         })
     }
     /// Returns false for an identical, already committed source message. A
     /// changed delivery header cannot replay the same numeric comment identity.
-    pub fn put_verified(&self, binding: &Binding, delivery_id: &str, message: Message) -> Result<bool> {
-        if !identifier(delivery_id) { return Err("DELIVERY_ID_INVALID"); }
+    pub fn put_verified(
+        &self,
+        binding: &Binding,
+        delivery_id: &str,
+        message: Message,
+    ) -> Result<bool> {
+        if !identifier(delivery_id) {
+            return Err("DELIVERY_ID_INVALID");
+        }
         self.transact(|v| {
             v.binding(binding)?;
-            if v.deliveries.get(delivery_id).is_some_and(|old| old != &message.message_id) {
+            if v.deliveries
+                .get(delivery_id)
+                .is_some_and(|old| old != &message.message_id)
+            {
                 return Err("DELIVERY_CONFLICT");
             }
             if let Some(old) = v.messages.get(&message.message_id) {
-                if old.message == message && old.binding_id == binding.id && old.generation == binding.generation {
-                    let event = (!v.deliveries.contains_key(delivery_id)).then(|| Event::DeliveryAlias {
-                        binding_id: binding.id.clone(), message_id: message.message_id.clone(), delivery_id: delivery_id.into(),
-                    });
+                if old.message == message
+                    && old.binding_id == binding.id
+                    && old.generation == binding.generation
+                {
+                    let event =
+                        (!v.deliveries.contains_key(delivery_id)).then(|| Event::DeliveryAlias {
+                            binding_id: binding.id.clone(),
+                            message_id: message.message_id.clone(),
+                            delivery_id: delivery_id.into(),
+                        });
                     return Ok((false, event));
                 }
                 return Err("MESSAGE_CONFLICT");
             }
-            Ok((true, Some(Event::Put { item: Pending {
-                binding_id: binding.id.clone(), generation: binding.generation,
-                repository_id: binding.repository_id, delivery_id: delivery_id.into(), message,
-            } })))
+            Ok((
+                true,
+                Some(Event::Put {
+                    item: Pending {
+                        binding_id: binding.id.clone(),
+                        generation: binding.generation,
+                        repository_id: binding.repository_id,
+                        delivery_id: delivery_id.into(),
+                        message,
+                    },
+                }),
+            ))
         })
     }
     /// Trusted controller only. This records an observation; it does NOT prove
     /// provider acceptance/worker completion. Not exposed by the receiver CLI.
     pub fn advance(&self, binding: &Binding, id: &str, transition: Transition) -> Result<()> {
-        if !identifier(id) { return Err("MESSAGE_ID_INVALID"); }
+        if !identifier(id) {
+            return Err("MESSAGE_ID_INVALID");
+        }
         self.transact(|v| {
             v.binding(binding)?;
-            Ok(((), Some(Event::Advance { binding_id: binding.id.clone(), message_id: id.into(), transition })))
+            Ok((
+                (),
+                Some(Event::Advance {
+                    binding_id: binding.id.clone(),
+                    message_id: id.into(),
+                    transition,
+                }),
+            ))
         })
     }
     pub fn inbox(&self, binding: &Binding, limit: usize) -> Result<Vec<Item>> {
-        if !(1..=100).contains(&limit) { return Err("INBOX_LIMIT"); }
+        if !(1..=100).contains(&limit) {
+            return Err("INBOX_LIMIT");
+        }
         self.transact(|v| {
             v.binding(binding)?;
-            let items = v.order.iter().filter_map(|id| {
-                let row = &v.messages[id];
-                (row.binding_id == binding.id).then(|| Item {
-                    binding_id: row.binding_id.clone(), generation: row.generation,
-                    message: row.message.clone(), status: v.router.state(&MessageKey::from(&row.message)).expect("replayed message"),
+            let items = v
+                .order
+                .iter()
+                .filter_map(|id| {
+                    let row = &v.messages[id];
+                    (row.binding_id == binding.id).then(|| Item {
+                        binding_id: row.binding_id.clone(),
+                        generation: row.generation,
+                        message: row.message.clone(),
+                        status: v
+                            .router
+                            .state(&MessageKey::from(&row.message))
+                            .expect("replayed message"),
+                    })
                 })
-            }).take(limit).collect();
+                .take(limit)
+                .collect();
             Ok((items, None))
         })
     }
 }
 
 fn state_path_error(error: &'static str) -> &'static str {
-    if error == "ACL_FILE_BUSY" { "STATE_BUSY_OR_LOCK_FAILED" } else { error }
+    if error == "ACL_FILE_BUSY" {
+        "STATE_BUSY_OR_LOCK_FAILED"
+    } else {
+        error
+    }
 }
 fn load(file: &mut File) -> Result<View> {
     let mut raw = Vec::new();
-    file.take(MAX_JOURNAL + 1).read_to_end(&mut raw).map_err(|_| "STATE_READ")?;
+    file.take(MAX_JOURNAL + 1)
+        .read_to_end(&mut raw)
+        .map_err(|_| "STATE_READ")?;
     if raw.len() as u64 > MAX_JOURNAL || (!raw.is_empty() && raw.last() != Some(&b'\n')) {
         return Err("JOURNAL_CORRUPT_OR_TOO_LARGE");
     }
     let mut view = View::default();
     for line in raw.split_inclusive(|b| *b == b'\n') {
-        if line.len() > MAX_RECORD || view.sequence >= MAX_RECORDS { return Err("JOURNAL_CAPACITY"); }
-        let record: Record = cwg_security::decode(line, MAX_RECORD).map_err(|_| "JOURNAL_CORRUPT")?;
-        if record.schema != "cwg-journal-v1" || record.sequence != view.sequence + 1 { return Err("JOURNAL_SEQUENCE"); }
+        if line.len() > MAX_RECORD || view.sequence >= MAX_RECORDS {
+            return Err("JOURNAL_CAPACITY");
+        }
+        let record: Record =
+            cwg_security::decode(line, MAX_RECORD).map_err(|_| "JOURNAL_CORRUPT")?;
+        if record.schema != "cwg-journal-v1" || record.sequence != view.sequence + 1 {
+            return Err("JOURNAL_SEQUENCE");
+        }
         view.apply(&record.event)?;
         view.sequence = record.sequence;
     }
@@ -345,15 +513,18 @@ trait CommitIo {
     fn synchronize(&mut self) -> std::io::Result<()>;
 }
 impl CommitIo for File {
-    fn append(&mut self, bytes: &[u8]) -> std::io::Result<()> { self.write_all(bytes) }
-    fn synchronize(&mut self) -> std::io::Result<()> { self.sync_all() }
+    fn append(&mut self, bytes: &[u8]) -> std::io::Result<()> {
+        self.write_all(bytes)
+    }
+    fn synchronize(&mut self) -> std::io::Result<()> {
+        self.sync_all()
+    }
 }
 fn commit_bytes(io: &mut impl CommitIo, bytes: Option<&[u8]>) -> Result<()> {
     if let Some(bytes) = bytes {
         io.append(bytes).map_err(|_| "STATE_COMMIT_UNKNOWN")?;
-        io.synchronize().map_err(|_| "STATE_COMMIT_UNKNOWN")?;
     }
-    Ok(())
+    io.synchronize().map_err(|_| "STATE_COMMIT_UNKNOWN")
 }
 
 #[cfg(test)]
@@ -371,7 +542,8 @@ mod commit_tests {
         fn append(&mut self, bytes: &[u8]) -> std::io::Result<()> {
             self.append_calls += 1;
             if let Some(limit) = self.partial_limit {
-                self.bytes.extend_from_slice(&bytes[..limit.min(bytes.len())]);
+                self.bytes
+                    .extend_from_slice(&bytes[..limit.min(bytes.len())]);
                 return Err(std::io::Error::other("injected partial append"));
             }
             self.bytes.extend_from_slice(bytes);
@@ -379,21 +551,37 @@ mod commit_tests {
         }
         fn synchronize(&mut self) -> std::io::Result<()> {
             self.sync_calls += 1;
-            if self.fail_sync { Err(std::io::Error::other("injected fsync failure")) } else { Ok(()) }
+            if self.fail_sync {
+                Err(std::io::Error::other("injected fsync failure"))
+            } else {
+                Ok(())
+            }
         }
     }
     #[test]
     fn partial_append_is_unknown_and_never_automatically_replayed_or_removed() {
-        let mut io = FaultIo { partial_limit: Some(3), ..FaultIo::default() };
-        assert_eq!(commit_bytes(&mut io, Some(b"record\n")), Err("STATE_COMMIT_UNKNOWN"));
+        let mut io = FaultIo {
+            partial_limit: Some(3),
+            ..FaultIo::default()
+        };
+        assert_eq!(
+            commit_bytes(&mut io, Some(b"record\n")),
+            Err("STATE_COMMIT_UNKNOWN")
+        );
         assert_eq!(io.bytes, b"rec");
         assert_eq!(io.append_calls, 1);
         assert_eq!(io.sync_calls, 0);
     }
     #[test]
     fn visible_append_with_failed_sync_is_not_durable_until_reconciliation_sync_succeeds() {
-        let mut io = FaultIo { fail_sync: true, ..FaultIo::default() };
-        assert_eq!(commit_bytes(&mut io, Some(b"complete record\n")), Err("STATE_COMMIT_UNKNOWN"));
+        let mut io = FaultIo {
+            fail_sync: true,
+            ..FaultIo::default()
+        };
+        assert_eq!(
+            commit_bytes(&mut io, Some(b"complete record\n")),
+            Err("STATE_COMMIT_UNKNOWN")
+        );
         assert_eq!(io.bytes, b"complete record\n");
         assert_eq!(commit_bytes(&mut io, None), Err("STATE_COMMIT_UNKNOWN"));
         assert_eq!(io.append_calls, 1);
@@ -406,7 +594,10 @@ mod commit_tests {
     }
     #[test]
     fn even_a_no_op_refuses_success_when_observed_journal_cannot_be_synchronized() {
-        let mut io = FaultIo { fail_sync: true, ..FaultIo::default() };
+        let mut io = FaultIo {
+            fail_sync: true,
+            ..FaultIo::default()
+        };
         assert_eq!(commit_bytes(&mut io, None), Err("STATE_COMMIT_UNKNOWN"));
         assert_eq!(io.append_calls, 0);
         assert_eq!(io.sync_calls, 1);
@@ -416,11 +607,23 @@ fn no_links(path: &Path) -> Result<()> {
     for p in path.ancestors() {
         match fs::symlink_metadata(p) {
             Ok(m) => {
-                if m.file_type().is_symlink() { return Err("STATE_LINK_REFUSED"); }
+                if m.file_type().is_symlink() {
+                    return Err("STATE_LINK_REFUSED");
+                }
                 #[cfg(windows)]
-                { use std::os::windows::fs::MetadataExt; if m.file_attributes() & 0x400 != 0 { return Err("STATE_REPARSE_REFUSED"); } }
+                {
+                    use std::os::windows::fs::MetadataExt;
+                    if m.file_attributes() & 0x400 != 0 {
+                        return Err("STATE_REPARSE_REFUSED");
+                    }
+                }
                 #[cfg(unix)]
-                { use std::os::unix::fs::MetadataExt; if m.is_file() && m.nlink() != 1 { return Err("STATE_HARDLINK_REFUSED"); } }
+                {
+                    use std::os::unix::fs::MetadataExt;
+                    if m.is_file() && m.nlink() != 1 {
+                        return Err("STATE_HARDLINK_REFUSED");
+                    }
+                }
             }
             Err(e) if e.kind() == std::io::ErrorKind::NotFound && p == path => {}
             Err(_) => return Err("STATE_PATH_INVALID"),

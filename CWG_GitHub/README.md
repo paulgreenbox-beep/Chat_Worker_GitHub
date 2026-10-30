@@ -5,5 +5,6 @@ current GitHub source/actor reconciliation, explicit config-bound route, durable
 inbox enqueue and local inbox inspection. No shell or model invocation.
 
 See [receiver guide](../doc/receiver.md) for configuration, limits, trust boundaries,
-tests and commands. Compilation/native execution are NOT_RUN for this change.
+tests and commands. See the [native Windows audit](../audit/RECEIVER_WINDOWS_VERIFICATION.md)
+for executed checks, exact source SHA and remaining limits.
 Actual Codex delivery, MCP and outbound comments are not implemented here.
