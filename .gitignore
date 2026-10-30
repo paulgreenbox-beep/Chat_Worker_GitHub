@@ -6,3 +6,7 @@
 *.db
 *.sqlite
 secrets/
+# Private receiver config and durable task content must never be published.
+receiver.local.json
+.cwg-state/
+inbox.jsonl

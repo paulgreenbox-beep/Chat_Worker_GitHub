@@ -3,6 +3,17 @@
 version = 4
 
 [[package]]
+name = "cwg-github"
+version = "0.1.0"
+dependencies = [
+ "cwg-protocol",
+ "cwg-security",
+ "cwg-state",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "cwg-protocol"
 version = "0.1.0"
 dependencies = [
@@ -15,6 +26,24 @@ name = "cwg-router"
 version = "0.1.0"
 dependencies = [
  "cwg-protocol",
+]
+
+[[package]]
+name = "cwg-security"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "cwg-state"
+version = "0.1.0"
+dependencies = [
+ "cwg-protocol",
+ "cwg-router",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

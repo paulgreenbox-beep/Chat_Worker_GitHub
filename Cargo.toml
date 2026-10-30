@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["CWG_Protocol", "CWG_Router"]
+members = ["CWG_Protocol", "CWG_Router", "CWG_Security", "CWG_State", "CWG_GitHub"]
 
 [workspace.package]
 edition = "2024"

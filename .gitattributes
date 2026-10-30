@@ -7,3 +7,5 @@ Cargo.lock text eol=lf
 *.md text eol=lf
 # Preserve the exact published bytes covered by evidence SHA-256 hashes.
 audit/evidence/** -text
+# HMAC fixtures are exact raw bytes, including their final LF.
+CWG_GitHub/tests/fixtures/** -text
