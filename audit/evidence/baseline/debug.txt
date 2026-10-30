@@ -1,0 +1,9 @@
+command: cargo build --workspace
+exit_code: 0
+stdout:
+
+stderr:
+   Compiling cwg-router v0.1.0 (<workspace>\CWG_Router)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.36s
+
+error: null

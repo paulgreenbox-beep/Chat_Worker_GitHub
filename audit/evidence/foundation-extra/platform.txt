@@ -1,0 +1,10 @@
+command: cmd /c ver
+CARGO_NET_OFFLINE=true
+exit_code: 0
+stdout:
+
+Microsoft Windows [Version 10.0.26300.9711]
+
+stderr:
+
+error: null

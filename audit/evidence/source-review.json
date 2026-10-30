@@ -1,0 +1,131 @@
+{
+  "source_sha": "7f9dff0a09717abec73118f45b67c1c733122e26",
+  "rust_inputs_sha256": {
+    "CWG_Protocol/Cargo.toml": "2c93255db2082d821cda48f9a60d2e91050165624135cc49ac97a4802f90f343",
+    "CWG_Protocol/src/lib.rs": "f1b96446066645732e9d611e25d36d2d809a4c2218a00632896556d42d90fb03",
+    "CWG_Protocol/tests/validation.rs": "dfb58d316b9d6ff8c1f120103db5c7ea192079813dee1e7f0930cdd7dccb187a",
+    "CWG_Router/Cargo.toml": "2306c7255ea15ab31ecadd931d6c328e34a8fe9a2e4b62535294b3e0d2a05c6a",
+    "CWG_Router/src/lib.rs": "5a30ac3c0f95111b71d23f1f4e04461442971ae5bb4c349b6dc31fe093a30c1b",
+    "CWG_Router/tests/audit_regressions.rs": "780c7f1baaa95579d37cac8b6b6f202b09d72c9cf26441e7bcc3442f5bd61982",
+    "CWG_Router/tests/routing.rs": "d14490787b69e533f7f7697ca5b132ad4e679c4b1df49c2c8e3a93974d13035c",
+    "Cargo.lock": "de20aef2c05bc29e5ce9da633f03fe7247e7daaae26a9b6de45b1ee7889bfc23",
+    "Cargo.toml": "26330dc65b7c2c132d2fcca49d39746598fa0a0b6eae0b24a76ec326e4655c15"
+  },
+  "command": "cargo metadata --format-version 1 --locked --offline",
+  "exit_code": 0,
+  "dependency_cycles": 0,
+  "publication_files_scanned": 60,
+  "findings": [],
+  "workspace": [
+    {
+      "name": "cwg-protocol",
+      "edition": "2024",
+      "targets": [
+        [
+          "lib"
+        ],
+        [
+          "test"
+        ]
+      ]
+    },
+    {
+      "name": "cwg-router",
+      "edition": "2024",
+      "targets": [
+        [
+          "lib"
+        ],
+        [
+          "test"
+        ],
+        [
+          "test"
+        ]
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "name": "itoa",
+      "version": "1.0.18",
+      "license": "MIT OR Apache-2.0",
+      "repository": "https://github.com/dtolnay/itoa",
+      "rust_version": "1.68"
+    },
+    {
+      "name": "memchr",
+      "version": "2.8.3",
+      "license": "Unlicense OR MIT",
+      "repository": "https://github.com/BurntSushi/memchr",
+      "rust_version": "1.61"
+    },
+    {
+      "name": "proc-macro2",
+      "version": "1.0.107",
+      "license": "MIT OR Apache-2.0",
+      "repository": "https://github.com/dtolnay/proc-macro2",
+      "rust_version": "1.71"
+    },
+    {
+      "name": "quote",
+      "version": "1.0.47",
+      "license": "MIT OR Apache-2.0",
+      "repository": "https://github.com/dtolnay/quote",
+      "rust_version": "1.71"
+    },
+    {
+      "name": "serde",
+      "version": "1.0.229",
+      "license": "MIT OR Apache-2.0",
+      "repository": "https://github.com/serde-rs/serde",
+      "rust_version": "1.56"
+    },
+    {
+      "name": "serde_core",
+      "version": "1.0.229",
+      "license": "MIT OR Apache-2.0",
+      "repository": "https://github.com/serde-rs/serde",
+      "rust_version": "1.56"
+    },
+    {
+      "name": "serde_derive",
+      "version": "1.0.229",
+      "license": "MIT OR Apache-2.0",
+      "repository": "https://github.com/serde-rs/serde",
+      "rust_version": "1.71"
+    },
+    {
+      "name": "serde_json",
+      "version": "1.0.154",
+      "license": "MIT OR Apache-2.0",
+      "repository": "https://github.com/serde-rs/json",
+      "rust_version": "1.71"
+    },
+    {
+      "name": "syn",
+      "version": "3.0.9",
+      "license": "MIT OR Apache-2.0",
+      "repository": "https://github.com/dtolnay/syn",
+      "rust_version": "1.71"
+    },
+    {
+      "name": "unicode-ident",
+      "version": "1.0.27",
+      "license": "(MIT OR Apache-2.0) AND Unicode-3.0",
+      "repository": "https://github.com/dtolnay/unicode-ident",
+      "rust_version": "1.71"
+    },
+    {
+      "name": "zmij",
+      "version": "1.0.23",
+      "license": "MIT",
+      "repository": "https://github.com/dtolnay/zmij",
+      "rust_version": "1.71"
+    }
+  ],
+  "limits": [
+    "Pattern scan is not proof against every possible secret.",
+    "No advisory database scan or live transport qualification."
+  ]
+}

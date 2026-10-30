@@ -1,0 +1,29 @@
+command: cargo test -p cwg-protocol --test status_wire
+exit_code: 101
+stdout:
+
+running 1 test
+test delivery_status_accepts_only_exact_string_wire_values ... FAILED
+
+failures:
+
+---- delivery_status_accepts_only_exact_string_wire_values stdout ----
+
+thread 'delivery_status_accepts_only_exact_string_wire_values' (19140) panicked at CWG_Protocol\tests\status_wire.rs:48:5:
+DeliveryStatus must use a JSON string, accepted objects: ["PENDING:raw", "PENDING:value", "VERIFIED:raw", "VERIFIED:value", "DELIVERING:raw", "DELIVERING:value", "DELIVERED:raw", "DELIVERED:value", "ACKNOWLEDGED:raw", "ACKNOWLEDGED:value", "COMPLETED:raw", "COMPLETED:value", "BLOCKED:raw", "BLOCKED:value", "UNKNOWN:raw", "UNKNOWN:value"]
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    delivery_status_accepts_only_exact_string_wire_values
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+stderr:
+   Compiling cwg-protocol v0.1.0 (<workspace>\CWG_Protocol)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.60s
+     Running tests\status_wire.rs (target\debug\deps\status_wire-22af51fcdcc27b85.exe)
+error: test failed, to rerun pass `-p cwg-protocol --test status_wire`
+
+error: null

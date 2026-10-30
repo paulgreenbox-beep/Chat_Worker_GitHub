@@ -1,6 +1,6 @@
 # Milestones
 
-- **CWG-001 (source foundation):** typed protocol, routing state machine, documentation. Source tests NOT_RUN until executed.
+- **CWG-001 (source foundation):** typed protocol, bounded JSON decoding/admission, scoped routing state machine, binding suspension and documentation. Executed local checks and their exact source identity are recorded in [the security follow-up](../audit/SECURITY_REVIEW.md) and [historical audit](../audit/REPORT.md); this does not accept later delivery milestones.
 - **CWG-002 (GitHub ingress):** authenticated webhook endpoint, bounded parser, GitHub permission recheck, durable deduplication.
 - **CWG-003 (chat binding):** trusted Codex thread registration/resumption, account and generation binding, stale chat refusal.
 - **CWG-004 (MCP):** authenticated inbox, read, ack, reply with no unsolicited execution.

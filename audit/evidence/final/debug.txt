@@ -1,0 +1,8 @@
+command: cargo build --workspace
+exit_code: 0
+stdout:
+
+stderr:
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.17s
+
+error: null

@@ -1,0 +1,8 @@
+{
+  "final_source_sha": "7f9dff0a09717abec73118f45b67c1c733122e26",
+  "rust_inputs_unchanged": true,
+  "rust_inputs_match_head": true,
+  "command": "SHA-256 verification of every recorded Cargo log; final Rust input stability",
+  "hash_failures": [],
+  "exit_code": 0
+}

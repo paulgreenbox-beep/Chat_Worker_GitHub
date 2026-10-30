@@ -1,0 +1,78 @@
+command: cargo test --workspace --all-targets
+exit_code: 0
+stdout:
+
+running 1 test
+test tests::rejects_empty_body ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 17 tests
+test delivery_status_has_exact_wire_names ... ok
+test rejects_empty_message_identifier ... ok
+test rejects_empty_thread_id ... ok
+test rejects_all_duplicate_json_keys_even_identical_values ... ok
+test rejects_invalid_numeric_identifiers ... ok
+test rejects_invalid_provider_and_identity_lengths ... ok
+test rejects_invalid_repository_names ... ok
+test rejects_invalid_unicode_json_and_non_ascii_identity ... ok
+test rejects_malformed_goal_identifiers ... ok
+test rejects_unknown_json_fields_at_every_level ... ok
+test rejects_wrong_schema_during_deserialization ... ok
+test required_fields_and_malformed_json_are_rejected ... ok
+test schema_error_keeps_its_classification ... ok
+test validates_standalone_source_and_target_deserialization ... ok
+test validation_error_categories_are_stable_and_do_not_echo_body ... ok
+test rejects_oversized_body_in_bytes ... ok
+test valid_unicode_body_and_boundaries_round_trip ... ok
+
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 2 tests
+test tests::exact_binding_and_duplicate_refusal ... ok
+test tests::uncertain_delivery_does_not_retry ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 2 tests
+test invalid_binding_is_not_registered ... ok
+test refuses_acknowledgement_before_provider_acceptance ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 16 tests
+test all_reachable_states_enforce_exact_transition_matrix ... ok
+test delivery_of_missing_message_is_refused_by_every_operation ... ok
+test directly_constructed_invalid_messages_are_not_enqueued ... ok
+test competing_in_memory_claims_have_one_winner_under_external_mutex ... ok
+test duplicate_comment_id_cannot_create_new_message ... ok
+test duplicate_message_id_cannot_replace_original ... ok
+test duplicate_registration_never_rebinds_an_existing_goal ... ok
+test independent_repositories_do_not_share_routes_or_comment_dedupe ... ok
+test registration_reuses_protocol_validation ... ok
+test repository_case_cannot_bypass_binding_or_comment_dedupe ... ok
+test two_logical_codex_chats_in_one_repository_remain_distinct ... ok
+test unknown_outcome_remains_non_retryable_and_replay_protected ... ok
+test simultaneous_goals_can_be_queued_with_external_serialization ... ok
+test unknown_repository_or_goal_binding_is_refused ... ok
+test untrusted_body_cannot_register_another_goal ... ok
+test wrong_thread_and_provider_are_refused_without_poisoning_dedupe ... ok
+
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+stderr:
+   Compiling cwg-protocol v0.1.0 (<workspace>\CWG_Protocol)
+   Compiling cwg-router v0.1.0 (<workspace>\CWG_Router)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.31s
+     Running unittests src\lib.rs (target\debug\deps\cwg_protocol-07650733aeb9086b.exe)
+     Running tests\validation.rs (target\debug\deps\validation-4176257d830464c8.exe)
+     Running unittests src\lib.rs (target\debug\deps\cwg_router-6f2a5dcdb8d22b23.exe)
+     Running tests\audit_regressions.rs (target\debug\deps\audit_regressions-244aaa3b279b330b.exe)
+     Running tests\routing.rs (target\debug\deps\routing-f36ac357ccb21256.exe)
+
+error: null

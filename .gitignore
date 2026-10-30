@@ -6,3 +6,5 @@
 *.db
 *.sqlite
 secrets/
+# Preserved local fixtures created by audit tooling tests; never publication input.
+/audit/.scratch/

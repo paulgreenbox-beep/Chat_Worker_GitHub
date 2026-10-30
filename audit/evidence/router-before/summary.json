@@ -1,0 +1,55 @@
+{
+  "source_sha": "a409120bbafeaefd7ad7569b7d5704e2ad6122d5",
+  "phase": "router-before",
+  "started_utc": "2026-10-30T13:31:06.773Z",
+  "platform": "win32",
+  "architecture": "x64",
+  "os_release": "10.0.26300",
+  "rustc": {
+    "exit_code": 0,
+    "stdout": "rustc 1.97.1 (8bab26f4f 2026-07-14)\nbinary: rustc\ncommit-hash: 8bab26f4f68e0e26f0bb7960be334d5b520ea452\ncommit-date: 2026-07-14\nhost: x86_64-pc-windows-msvc\nrelease: 1.97.1\nLLVM version: 22.1.6\n",
+    "stderr": "",
+    "error": null
+  },
+  "cargo": {
+    "exit_code": 0,
+    "stdout": "cargo 1.97.1 (c980f4866 2026-06-30)\n",
+    "stderr": "",
+    "error": null
+  },
+  "inputs_before": {
+    "CWG_Protocol/Cargo.toml": "6bf0bda4ab4503a3583ceeb5655f2494ad7b508bd76a4064da034f0f61f29fae",
+    "CWG_Protocol/src/lib.rs": "289ebacb1a7a9197b825f541cc0e21e4fa8b47dfcaa97515e15032bf7a317fb4",
+    "CWG_Protocol/tests/validation.rs": "c2ff747076e15b8953096f893f92396f9c40bb082f87b8ca2c02ab4a2a9089f8",
+    "CWG_Router/Cargo.toml": "b86b66d2406cf71f73a37935d7987af03fd56c0dd25486fe67ec6409ded6a0bb",
+    "CWG_Router/src/lib.rs": "88a9e16866d6b082e44614de0af7065fcfa2b2f0867f78eadf20d9ca8a917ae1",
+    "CWG_Router/tests/audit_regressions.rs": "37ce46f80ace5a40881a2a8c30e06a04fb1f54ad05244c6d578a34cca4a66579",
+    "Cargo.lock": "de20aef2c05bc29e5ce9da633f03fe7247e7daaae26a9b6de45b1ee7889bfc23",
+    "Cargo.toml": "1ab59e84c8e71e728034b1a0944e412994c2dfa74b3aff8411d578fb7abc0646"
+  },
+  "checks": [
+    {
+      "command": "cargo test -p cwg-router --test audit_regressions",
+      "exit_code": 101,
+      "status": "FAIL",
+      "tests": {
+        "passed": 0,
+        "failed": 2,
+        "ignored": 0
+      },
+      "log": "test.txt",
+      "log_sha256": "d887379e422c521a9b32eb2c0ecd008df385cc96c7e1fc59b573e22ca8f64f77"
+    }
+  ],
+  "finished_utc": "2026-10-30T13:31:07.842Z",
+  "inputs_after": {
+    "CWG_Protocol/Cargo.toml": "6bf0bda4ab4503a3583ceeb5655f2494ad7b508bd76a4064da034f0f61f29fae",
+    "CWG_Protocol/src/lib.rs": "289ebacb1a7a9197b825f541cc0e21e4fa8b47dfcaa97515e15032bf7a317fb4",
+    "CWG_Protocol/tests/validation.rs": "c2ff747076e15b8953096f893f92396f9c40bb082f87b8ca2c02ab4a2a9089f8",
+    "CWG_Router/Cargo.toml": "b86b66d2406cf71f73a37935d7987af03fd56c0dd25486fe67ec6409ded6a0bb",
+    "CWG_Router/src/lib.rs": "88a9e16866d6b082e44614de0af7065fcfa2b2f0867f78eadf20d9ca8a917ae1",
+    "CWG_Router/tests/audit_regressions.rs": "37ce46f80ace5a40881a2a8c30e06a04fb1f54ad05244c6d578a34cca4a66579",
+    "Cargo.lock": "de20aef2c05bc29e5ce9da633f03fe7247e7daaae26a9b6de45b1ee7889bfc23",
+    "Cargo.toml": "1ab59e84c8e71e728034b1a0944e412994c2dfa74b3aff8411d578fb7abc0646"
+  }
+}

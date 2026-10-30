@@ -6,3 +6,6 @@ license.workspace = true
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
+# The bounded raw-byte entry point rejects oversized JSON before parser allocation.
+# Retain the existing lockfile version; no dependency version upgrade is needed.
+serde_json = "1"

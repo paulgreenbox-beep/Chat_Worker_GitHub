@@ -1,0 +1,40 @@
+command: cargo test -p cwg-router --test audit_regressions
+exit_code: 101
+stdout:
+
+running 2 tests
+test invalid_binding_is_not_registered ... FAILED
+test refuses_acknowledgement_before_provider_acceptance ... FAILED
+
+failures:
+
+---- invalid_binding_is_not_registered stdout ----
+
+thread 'invalid_binding_is_not_registered' (31388) panicked at CWG_Router\tests\audit_regressions.rs:23:5:
+assertion `left == right` failed
+  left: Ok(())
+ right: Err(InvalidMessage)
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- refuses_acknowledgement_before_provider_acceptance stdout ----
+
+thread 'refuses_acknowledgement_before_provider_acceptance' (22996) panicked at CWG_Router\tests\audit_regressions.rs:16:5:
+assertion `left == right` failed
+  left: Ok(())
+ right: Err(StaleOrWrongState)
+
+
+failures:
+    invalid_binding_is_not_registered
+    refuses_acknowledgement_before_provider_acceptance
+
+test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+stderr:
+   Compiling cwg-router v0.1.0 (<workspace>\CWG_Router)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.73s
+     Running tests\audit_regressions.rs (target\debug\deps\audit_regressions-244aaa3b279b330b.exe)
+error: test failed, to rerun pass `-p cwg-router --test audit_regressions`
+
+error: null
