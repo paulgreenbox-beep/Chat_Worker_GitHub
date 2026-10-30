@@ -1,0 +1,324 @@
+command: cargo test --workspace --all-targets --locked --offline
+CARGO_NET_OFFLINE=true
+exit_code: 0
+stdout:
+
+running 55 tests
+test http::tests::ambiguous_framing_refused ... ok
+test http::tests::duplicate_length_and_signature_are_refused ... ok
+test http::tests::header_newline_injection_refused ... ok
+test http::tests::header_limit_is_checked_before_unbounded_input ... ok
+test http::tests::http_security_regression_bad_mac_shape_is_refused_before_body_read ... ok
+test http::tests::http_security_regression_empty_host_is_rejected ... ok
+test http::tests::http_security_regression_missing_signature_is_refused_before_body_read ... ok
+test http::tests::http_security_regression_unknown_event_is_refused_before_body_read ... ok
+test http::tests::length_bounds_and_truncation_refused ... ok
+test http::tests::preserves_exact_body ... ok
+test tests::api_errors_are_not_authorization ... ok
+test tests::ambiguous_routes_and_public_listen_are_rejected ... ok
+test tests::audit_api_comment_author_bot ... ok
+test tests::audit_api_comment_author_id ... ok
+test tests::audit_api_comment_author_login ... ok
+test tests::audit_api_comment_body ... ok
+test tests::audit_api_comment_calendar ... ok
+test tests::audit_api_comment_edited ... ok
+test tests::audit_api_comment_id ... ok
+test tests::audit_api_comment_issue_url ... ok
+test tests::audit_api_comment_zero ... ok
+test tests::audit_api_issue_closed ... ok
+test tests::audit_api_issue_id ... ok
+test tests::audit_api_issue_is_pr ... ok
+test tests::audit_api_issue_locked ... ok
+test tests::audit_api_issue_number ... ok
+test http::tests::native_stream_interrupted_body_is_refused ... ok
+test tests::audit_api_permission_bot ... ok
+test tests::audit_api_permission_id ... ok
+test tests::audit_api_permission_login ... ok
+test tests::audit_api_permission_none ... ok
+test tests::audit_api_permission_read ... ok
+test tests::audit_api_permission_triage ... ok
+test tests::audit_api_permission_unknown ... ok
+test tests::audit_api_repository_id ... ok
+test tests::audit_api_repository_name ... ok
+test tests::audit_api_repository_owner ... ok
+test tests::audit_api_typed_arrays_are_refused ... ok
+test tests::audit_config_and_nested_routes_require_objects ... ok
+test tests::calendar_cutoff_is_validated ... ok
+test tests::audit_event_and_every_nested_identity_require_objects ... ok
+test tests::audit_each_api_error_propagates_without_authorization_fallback ... ok
+test tests::changed_or_edited_comment_is_not_delivered ... ok
+test tests::historical_comment_before_registration_is_refused ... ok
+test tests::closed_locked_and_pr_threads_are_rejected ... ok
+test tests::payload_url_is_not_used_as_an_api_destination ... ok
+test tests::permission_identity_must_match ... ok
+test tests::recreated_repository_is_refused ... ok
+test tests::revoked_actor_permission_is_refused ... ok
+test tests::routes_from_config_not_task_text ... ok
+test tests::source_owner_transfer_is_refused ... ok
+test tests::unauthorized_sender_causes_no_api_requests ... ok
+test tests::wrong_installation_and_bot_are_rejected ... ok
+test tests::signed_fixture_commits_once_and_bad_mac_never_reads_api ... ok
+test http::tests::native_stream_deadline_refuses_slow_header_and_body ... ok
+
+test result: ok. 55 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.32s
+
+
+running 20 tests
+test windows::tests::audit_cleanup_failure_keeps_operation_failure_class ... ok
+test windows::tests::audit_connect_attempt_policy_is_single_attempt ... ok
+test windows::tests::audit_explicit_modern_tls_policy_is_required ... ok
+test windows::tests::audit_failed_native_close_is_not_reported_as_success ... ok
+test windows::tests::audit_fixture_client_refuses_non_loopback_without_network ... ok
+test windows::tests::audit_invalid_path_or_deadline_opens_no_handle ... ok
+test native_tests::native_owner_config_refuses_corruption_unprotected_acl_and_alias_paths ... ok
+test windows::tests::audit_native_session_policy_is_observable ... ok
+test windows::tests::audit_response_length_query_errors_are_not_treated_as_absent ... ok
+test native_tests::native_cng_and_cleanup_failures_are_service_errors_not_authorization_success ... ok
+test windows::tests::audit_token_format_rejects_header_injection_before_network ... ok
+test windows::tests::audit_fixture_refuses_an_interrupted_http_request_without_a_success_response ... ok
+test windows::tests::audit_native_loopback_get_has_no_credentials_and_closes_owned_handles ... ok
+test windows::tests::audit_native_redirect_is_refused_without_following_location ... ok
+test windows::tests::audit_native_response_limit_fails_closed_and_closes_handles ... ok
+test windows::tests::audit_native_truncated_response_is_not_accepted ... ok
+test windows::tests::audit_native_exact_response_boundary_and_missing_length ... ok
+test windows::tests::audit_native_denied_status_and_auth_challenge_do_not_authorize ... ok
+test native_tests::native_receiver_end_to_end_uses_cng_winhttp_and_durable_scoped_inbox ... ok
+test windows::tests::audit_native_timeout_refuses_and_releases_owned_handles ... ok
+
+test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.27s
+
+
+running 1 test
+test tests::rejects_empty_body ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 4 tests
+test message_debug_redacts_body ... ok
+test rejects_full_root_array ... ok
+test rejects_full_source_array ... ok
+test rejects_full_target_array ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 9 tests
+test escaped_field_names_cannot_hide_duplicate_keys ... ok
+test raw_budget_is_checked_before_json_parsing ... ok
+test raw_parser_errors_report_location_without_echoing_input ... ok
+test raw_parser_keeps_strict_shape_duplicate_keys_and_complete_document_rules ... ok
+test raw_parser_rejects_invalid_unicode_without_quoting_it ... ok
+test exact_raw_budget_accepts_valid_json_and_one_extra_byte_is_refused ... ok
+test every_wire_string_has_a_decoded_byte_limit ... ok
+test escaped_maximum_body_fits_raw_budget_and_round_trips ... ok
+test escaped_decoded_body_limit_is_enforced_within_raw_budget ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 17 tests
+test delivery_status_has_exact_wire_names ... ok
+test rejects_all_duplicate_json_keys_even_identical_values ... ok
+test rejects_empty_message_identifier ... ok
+test rejects_empty_thread_id ... ok
+test rejects_invalid_numeric_identifiers ... ok
+test rejects_invalid_provider_and_identity_lengths ... ok
+test rejects_invalid_repository_names ... ok
+test rejects_invalid_unicode_json_and_non_ascii_identity ... ok
+test rejects_malformed_goal_identifiers ... ok
+test rejects_unknown_json_fields_at_every_level ... ok
+test rejects_wrong_schema_during_deserialization ... ok
+test required_fields_and_malformed_json_are_rejected ... ok
+test schema_error_keeps_its_classification ... ok
+test validates_standalone_source_and_target_deserialization ... ok
+test validation_error_categories_are_stable_and_do_not_echo_body ... ok
+test rejects_oversized_body_in_bytes ... ok
+test valid_unicode_body_and_boundaries_round_trip ... ok
+
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 3 tests
+test tests::admission_accounting_rejects_overflow_without_wrapping ... ok
+test tests::exact_binding_and_duplicate_refusal ... ok
+test tests::uncertain_delivery_does_not_retry ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 2 tests
+test invalid_binding_is_not_registered ... ok
+test refuses_acknowledgement_before_provider_acceptance ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 16 tests
+test all_reachable_states_enforce_exact_transition_matrix ... ok
+test delivery_of_missing_message_is_refused_by_every_operation ... ok
+test directly_constructed_invalid_messages_are_not_enqueued ... ok
+test competing_in_memory_claims_have_one_winner_under_external_mutex ... ok
+test duplicate_comment_id_cannot_create_new_message ... ok
+test duplicate_message_id_cannot_replace_original ... ok
+test duplicate_registration_never_rebinds_an_existing_goal ... ok
+test independent_repositories_do_not_share_routes_or_comment_dedupe ... ok
+test registration_reuses_protocol_validation ... ok
+test repository_case_cannot_bypass_binding_or_comment_dedupe ... ok
+test two_logical_codex_chats_in_one_repository_remain_distinct ... ok
+test unknown_outcome_remains_non_retryable_and_replay_protected ... ok
+test simultaneous_goals_can_be_queued_with_external_serialization ... ok
+test unknown_repository_or_goal_binding_is_refused ... ok
+test untrusted_body_cannot_register_another_goal ... ok
+test wrong_thread_and_provider_are_refused_without_poisoning_dedupe ... ok
+
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 12 tests
+test aggregate_body_budget_counts_utf8_bytes_and_failure_does_not_reserve_ids ... ok
+test binding_budget_is_exact_and_suspension_does_not_free_it ... ok
+test default_admission_budgets_are_explicit_and_finite ... ok
+test every_transition_and_query_checks_repository_goal_provider_and_thread ... ok
+test malformed_message_keys_never_mutate_existing_messages ... ok
+test message_budget_preserves_unknown_state_and_replay_history ... ok
+test suspension_allows_recording_inflight_success_without_reopening_binding ... ok
+test suspension_allows_recording_inflight_unknown_but_never_retries ... ok
+test suspension_before_claim_preserves_verified_message_and_history ... ok
+test suspension_before_enqueue_is_irreversible_and_scoped ... ok
+test suspension_of_unknown_or_malformed_binding_changes_nothing ... ok
+test zero_admission_budgets_fail_closed ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 3 tests
+test message_id_collision_in_another_repository_is_independent ... ok
+test default_binding_capacity_is_finite ... ok
+test default_message_capacity_is_finite ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+
+running 15 tests
+test tests::bounds_and_trailing_json_are_rejected ... ok
+test tests::comparison_checks_all_positions ... ok
+test tests::duplicates_in_ignored_nested_fields_are_rejected ... ok
+test tests::github_official_hmac_vector_and_tamper ... ok
+test tests::independent_objects_can_reuse_keys ... ok
+test tests::malformed_mac_rejected ... ok
+test windows_cng::tests::cng_injected_close_failure_is_distinct_from_hash_failure ... ok
+test windows_cng::tests::cng_injected_hash_and_close_failures_preserve_both_outcomes ... ok
+test windows_cng::tests::cng_injected_hash_failure_attempts_close_exactly_once ... ok
+test windows_cng::tests::cng_injected_open_failure_never_hashes_or_closes ... ok
+test windows_cng::tests::cng_native_empty_payload_and_secret_size_policy_boundaries ... ok
+test windows_cng::tests::cng_native_hash_failure_closes_real_provider_once ... ok
+test windows_cng::tests::cng_native_open_failure_creates_no_owned_provider ... ok
+test windows_cng::tests::cng_native_rfc4231_vectors_and_exact_binary_bytes ... ok
+test windows_cng::tests::cng_native_repeated_real_providers_close_with_balanced_successes ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 9 tests
+test security_duplicate_escaped_aliases_are_rejected ... ok
+test security_duplicate_keys_rejected_at_every_extension_depth ... ok
+test security_errors_never_echo_untrusted_json ... ok
+test security_independent_objects_and_unicode_key_spellings_are_not_global_duplicates ... ok
+test security_malformed_unicode_and_trailing_documents_are_rejected ... ok
+test security_signature_header_is_exact_lowercase_sha256 ... ok
+test security_nested_json_recursion_is_bounded ... ok
+test security_size_guard_precedes_parser_and_exact_boundary_accepts ... ok
+test security_typed_numeric_forms_are_not_coerced ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 3 tests
+test commit_tests::even_a_no_op_refuses_success_when_observed_journal_cannot_be_synchronized ... ok
+test commit_tests::partial_append_is_unknown_and_never_automatically_replayed_or_removed ... ok
+test commit_tests::visible_append_with_failed_sync_is_not_durable_until_reconciliation_sync_succeeds ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 19 tests
+test binding_decode_requires_object_and_validated_identity ... ok
+test binding_is_immutable_across_restart ... ok
+test duplicate_journal_enum_fields_are_refused_without_truncation ... ok
+test partial_append_blocks_without_truncating ... ok
+test sequence_corruption_is_rejected ... ok
+test security_regression_journal_record_requires_object ... ok
+test changed_body_cannot_replace_committed_message ... ok
+test persisted_pending_item_requires_object_without_repairing_the_journal ... ok
+test same_delivery_cannot_name_a_second_source ... ok
+test out_of_order_ack_does_not_change_state ... ok
+test neighbor_binding_cannot_read_or_transition_other_message ... ok
+test security_regression_delivery_alias_cannot_cross_sources ... ok
+test security_regression_new_delivery_alias_is_durable ... ok
+test journal_storage_and_record_limits_refuse_without_truncation ... ok
+test security_regression_state_root_requires_private_acl ... ok
+test direct_put_refuses_wrong_target_without_poisoning_source_or_delivery_ids ... ok
+test survives_reopen_and_changed_delivery_header ... ok
+test concurrent_claims_have_one_winner ... ok
+test unfinished_claim_is_not_retryable_after_restart ... ok
+
+test result: ok. 19 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s
+
+
+running 4 tests
+test partial_native_append_survives_exit_and_is_never_truncated_or_repaired ... ok
+test native_os_lock_blocks_another_process_and_is_released_on_owned_exit ... ok
+test committed_claim_survives_owned_process_termination_without_retry ... ok
+test independent_native_process_claims_have_exactly_one_winner ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.57s
+
+
+running 2 tests
+test security_regression_prior_writer_config_is_refused_after_acl_tightening ... ok
+test security_regression_writable_mapping_journal_is_refused_after_writer_closes ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 7 tests
+test actual_world_read_grant_on_config_is_refused ... ok
+test ancestor_allows_unrelated_creation_but_refuses_delete_child_rights ... ok
+test fixture_fence_rejects_unregistered_junction_path_before_creating_it ... ok
+test fixture_fence_refuses_to_change_acl_through_a_hardlink_alias ... ok
+test checked_ancestor_and_root_cannot_be_renamed_until_guard_is_released ... ok
+test native_junction_is_refused_as_config_ancestor_and_state_root ... ok
+test hardlinked_private_config_and_journal_are_refused_without_mutating_bytes ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+
+stderr:
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.04s
+     Running unittests src\lib.rs (target\debug\deps\cwg_github-b0a0d333dcbedb69.exe)
+     Running unittests src\main.rs (target\debug\deps\cwg_github-3805a0d3b3314014.exe)
+     Running unittests src\lib.rs (target\debug\deps\cwg_protocol-07650733aeb9086b.exe)
+     Running tests\hardening_regressions.rs (target\debug\deps\hardening_regressions-aa9ed18154b86e6c.exe)
+     Running tests\raw_json.rs (target\debug\deps\raw_json-c67a9e3bdd93cf4d.exe)
+     Running tests\validation.rs (target\debug\deps\validation-c98c844c6911ddae.exe)
+     Running unittests src\lib.rs (target\debug\deps\cwg_router-c3fd0d5eb4a1de22.exe)
+     Running tests\audit_regressions.rs (target\debug\deps\audit_regressions-3305fcb598d54d4f.exe)
+     Running tests\routing.rs (target\debug\deps\routing-8ee2a6017fa5c264.exe)
+     Running tests\security_bounds_and_scope.rs (target\debug\deps\security_bounds_and_scope-ba2b0582a05a0f28.exe)
+     Running tests\security_regressions.rs (target\debug\deps\security_regressions-342286ac0eb1e2dc.exe)
+     Running unittests src\lib.rs (target\debug\deps\cwg_security-10de0513fa4b9a08.exe)
+     Running tests\json_limits.rs (target\debug\deps\json_limits-eb17849b016fa55e.exe)
+     Running unittests src\lib.rs (target\debug\deps\cwg_state-e6fa1ab8e17cd138.exe)
+     Running unittests src\bin\cwg-state-fixture.rs (target\debug\deps\cwg_state_fixture-a045247b63627d68.exe)
+     Running tests\durable.rs (target\debug\deps\durable-b6d31f67d83a9f67.exe)
+     Running tests\native_process.rs (target\debug\deps\native_process-177caf12f1762683.exe)
+     Running tests\retained_access.rs (target\debug\deps\retained_access-8b5def9723d19ad1.exe)
+     Running tests\windows_paths.rs (target\debug\deps\windows_paths-18b9ae024bf5ad47.exe)
+
+error: null

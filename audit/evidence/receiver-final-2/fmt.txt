@@ -1,0 +1,8 @@
+command: cargo fmt --all -- --check
+CARGO_NET_OFFLINE=true
+exit_code: 0
+stdout:
+
+stderr:
+
+error: null

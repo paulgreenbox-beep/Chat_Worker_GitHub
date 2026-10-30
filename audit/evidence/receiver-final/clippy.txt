@@ -1,0 +1,59 @@
+command: cargo clippy --workspace --all-targets --locked -- -D warnings
+CARGO_NET_OFFLINE=true
+exit_code: 101
+stdout:
+
+stderr:
+    Checking cwg-security v0.1.0 (<workspace>\CWG_Security)
+    Checking cwg-state v0.1.0 (<workspace>\CWG_State)
+error: items after a test module
+   --> CWG_State\src\lib.rs:531:1
+    |
+531 | mod commit_tests {
+    | ^^^^^^^^^^^^^^^^
+...
+606 | fn no_links(path: &Path) -> Result<()> {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#items_after_test_module
+    = note: `-D clippy::items-after-test-module` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::items_after_test_module)]`
+    = help: move the items to before the test module was defined
+
+    Checking cwg-github v0.1.0 (<workspace>\CWG_GitHub)
+error: could not compile `cwg-state` (lib test) due to 1 previous error
+warning: build failed, waiting for other jobs to finish...
+error: can be more succinctly written as a byte str
+  --> CWG_State\src\bin\cwg-state-fixture.rs:73:17
+   |
+73 |     if token != [b'g'] {
+   |                 ^^^^^^ help: try: `*b"g"`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#byte_char_slices
+   = note: `-D clippy::byte-char-slices` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::byte_char_slices)]`
+
+error: all variants have the same prefix: `Everyone`
+  --> CWG_State\tests\support\windows_fixture.rs:26:1
+   |
+26 | / pub enum FixtureGrant {
+27 | |     EveryoneRead,
+28 | |     EveryoneFull,
+29 | |     EveryoneCreateOnly,
+30 | |     EveryoneDeleteChild,
+31 | | }
+   | |_^
+   |
+   = help: remove the prefixes and use full paths to the variants instead of glob imports
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#enum_variant_names
+   = note: `-D clippy::enum-variant-names` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::enum_variant_names)]`
+
+error: could not compile `cwg-state` (bin "cwg-state-fixture") due to 1 previous error
+error: could not compile `cwg-state` (bin "cwg-state-fixture" test) due to 1 previous error
+error: could not compile `cwg-state` (test "retained_access") due to 1 previous error
+error: could not compile `cwg-state` (test "durable") due to 1 previous error
+error: could not compile `cwg-state` (test "native_process") due to 1 previous error
+error: could not compile `cwg-state` (test "windows_paths") due to 1 previous error
+
+error: null

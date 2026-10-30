@@ -1,0 +1,34 @@
+command: cargo test -p cwg-github --bin cwg-github --locked --offline audit_fixture_ -- --nocapture
+CARGO_NET_OFFLINE=true
+exit_code: 101
+stdout:
+
+running 3 tests
+test windows::tests::audit_fixture_client_refuses_non_loopback_without_network ... ok
+test windows::tests::audit_fixture_refuses_an_interrupted_http_request_without_a_success_response ... ok
+test windows::tests::audit_fixture_survives_empty_probe_before_the_real_request ... FAILED
+
+failures:
+
+failures:
+    windows::tests::audit_fixture_survives_empty_probe_before_the_real_request
+
+test result: FAILED. 2 passed; 1 failed; 0 ignored; 0 measured; 19 filtered out; finished in 2.05s
+
+
+stderr:
+   Compiling cwg-github v0.1.0 (<workspace>\CWG_GitHub)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.84s
+     Running unittests src\main.rs (target\debug\deps\cwg_github-3805a0d3b3314014.exe)
+CWG_FIXTURE_CAPTURE port=63963 complete=false get=false host_matches=false auth=false cookie=false bytes=0
+CWG_FIXTURE_CAPTURE port=63962 complete=false get=true host_matches=false auth=false cookie=false bytes=40
+CWG_WINHTTP_TEST_ERROR caller_line=323 win32=12029 extended_query=1 winsock=0
+
+thread 'windows::tests::audit_fixture_survives_empty_probe_before_the_real_request' (21448) panicked at CWG_GitHub\src\windows.rs:611:9:
+assertion `left == right` failed: a closed connection without an HTTP request must not consume the fixture transaction
+  left: Err("GITHUB_TRANSPORT")
+ right: Ok([123, 125])
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+error: test failed, to rerun pass `-p cwg-github --bin cwg-github`
+
+error: null

@@ -1,57 +1,72 @@
 # Chat Worker GitHub (CWG)
 
-**CWG** is a standalone, GitHub-backed message bridge between a human/AI task author and an **existing, explicitly registered AI worker chat**. It is not part of Makepad SandStudio.
+CWG is a standalone GitHub-backed transport from a task author to an **existing,
+explicitly registered AI worker chat**. It is not part of Makepad SandStudio.
 
-**Target flow:** Author → GitHub event/comment → authenticated CWG receiver → verified message → thread binding → provider adapter → acknowledgement/reply.
+Target: Author → GitHub comment → authenticated receiver → durable inbox →
+registered thread → provider acknowledgement. Task text is data, not execution
+authority. No containers, VMs, model calls, automatic merge or installed service.
 
-## Scope and status
+## Current source
 
-- This repository begins as a **source-only foundation**, not a running webhook service, installed MCP server, or active Codex App Server bridge.
-- GitHub is the durable transport/audit journal. GitHub Issue text is **untrusted data**, never execution authority.
-- The same registered conversation should receive subsequent task updates; the display name of a chat is not its trusted identity.
-- No automatic model calls, job execution, persistent background worker, secrets, containers or VMs are provisioned.
-- Reuse and adapt concepts from [MSS GOAL PR #5](https://github.com/paulgreenbox-beep/makepad-sandstudio/pull/5), [dispatcher PR #7](https://github.com/paulgreenbox-beep/makepad-sandstudio/pull/7), and [broker PR #9](https://github.com/paulgreenbox-beep/makepad-sandstudio/pull/9), **not their approval/qualification claims**. In particular broker native isolation remains blocked.
+| Component | Source in this branch | Qualification |
+|---|---|---|
+| CWG_Protocol / CWG_Router | Existing validated contracts and routing | Prior audit at its recorded SHA; unchanged here |
+| CWG_Security | Bounded object-only JSON checks; Windows CNG HMAC; handle-based Windows ACL checks | Native results and exact SHA in the Windows audit below |
+| CWG_State | Bounded protected file-locked/fsynced inbox; persistent replay protection | Native subprocess/fault results in the Windows audit; power-loss durability NOT_VERIFIED |
+| CWG_GitHub | Foreground Windows receiver, fixed-host API reconciliation, local inbox CLI | Controlled-loopback receiver-to-inbox integration; live GitHub/Codex delivery NOT_RUN |
+| CWG_MCP / CWG_Worker | Planned MCP and Codex adapter | NOT_IMPLEMENTED |
+| CWG_CheckBroker | Optional independent check integration | Disabled; not needed for ordinary messages |
 
-## Modules
+The receiver is **not a qualified deployment**. Native Windows build, test and
+security evidence, including initial failures and their fixes, is recorded in
+[the Windows verification report](audit/RECEIVER_WINDOWS_VERIFICATION.md).
+Results apply to the exact source SHA recorded there. This branch incorporates the additional security review
+from PR #1 at `a7aa73858a85620f4ca10f09fcf75d86186f662c`, preserving its
+scoped MessageKey, body budgets, binding suspension and all regression tests.
+See [the preserved security review](audit/SECURITY_REVIEW.md); integrating that
+review is separate from the native receiver verification.
 
-| Module | Responsibility |
-|---|---|
-| `CWG_Protocol` | Versioned message, binding, delivery and receipt schemas |
-| `CWG_GitHub` | Webhook ingestion, API reconciliation and outbound comments |
-| `CWG_Security` | Webhook signature, sender authorization, replay and scope checks |
-| `CWG_Router` | Target repository + goal + registered thread routing |
-| `CWG_MCP` | Agent-side tools for inbox, acknowledge and reply |
-| `CWG_Worker` | Provider-specific chat adapters; Codex first |
-| `CWG_State` | Durable message queue, idempotency and recovery |
-| `CWG_CheckBroker` | Optional independent source-check interface; disabled until independently qualified |
+## Receiver workflow
 
-See [architecture map](doc/maps.md), [delivery protocol](doc/protocol.md), [migration plan](doc/migration.md), [security requirements](SECURITY.md), and [agent rules](AGENTS.md).
+An owner configures an exact numeric repository/owner/Issue → account/thread
+binding and authorized numeric senders. A created comment must pass raw HMAC,
+live GitHub reconciliation and current author permission checks before entering
+the persistent queue. Changing comment text cannot change the destination.
+Repeated deliveries do not create duplicate messages. The queue preserves
+non-retryable interrupted delivery state and refuses torn/corrupt records.
 
-## MVP acceptance
-
-1. A GitHub event from an authorized repository and actor becomes a verified, deduplicated immutable message.
-2. An owner-approved mapping binds the destination to a **stable provider thread ID**, not a mutable chat title.
-3. One delivery to one registered thread is acknowledged and correlated to the original GitHub message.
-4. Interrupted or uncertain dispatch is not blindly replayed; messages transition to `UNKNOWN` until reconciled.
-5. Reply/comment publication requires separate GitHub write authorization.
-6. A different repo/user/thread cannot impersonate another binding.
-7. Independent unit and integration tests accompany each implemented boundary; no invented PASS.
-
-## Current implementation
-
-The Rust source provides validated typed protocols and an in-memory routing/queue model. `Message::from_json_slice` bounds a raw JSON document before parsing; all three wire models require JSON objects and reject invalid, unknown and duplicate fields. Router uses explicit repository/GOAL/target/message keys for state operations, finite admission budgets and one-way binding suspension. Repository names are compared without ASCII case, while provider/thread/GOAL identities remain exact. Delivery transitions follow the documented state machine.
-
-Network webhook listener, GitHub authentication/actor authorization, persistent database, MCP transport, Codex App Server connection, native check execution and actual delivery are **NOT_IMPLEMENTED**. Router methods require a trusted external controller; accepting a syntactically valid ID does not authenticate its owner. Logical routing tests do not establish Codex thread isolation.
+See [receiver installation, API and security guide](doc/receiver.md) and the
+[inert Windows example](examples/receiver.windows.example.json). No webhook,
+proxy, credentials, background process or chat connection is installed by this
+repository. Local inbox inspection is not delivery to Codex.
 
 ## Development
 
 ```sh
 cargo fmt --all -- --check
-cargo check --workspace --all-targets
-cargo test --workspace --all-targets
-cargo clippy --workspace --all-targets -- -D warnings
-cargo build --workspace
-cargo build --workspace --release
+cargo check --workspace --all-targets --locked
+cargo test --workspace --all-targets --locked
+cargo clippy --workspace --all-targets --locked -- -D warnings
+cargo build --workspace --locked
 ```
 
-See [verification matrix](doc/testing.md), [security follow-up](audit/SECURITY_REVIEW.md) and [historical first-pass audit](audit/REPORT.md) for executed commands, exact checked revisions and limitations. `Cargo.lock` is committed for repeatable workspace dependency selection. Reproduce with the recorded Rust/Cargo versions; an MSRV, other operating systems and bit-for-bit binary reproducibility have not been verified. Use `--locked --offline` once the locked dependencies are locally cached.
+The lock retains existing external versions/checksums; only new local workspace
+packages are listed. The native audit records locked and offline verification.
+Once the dependencies are cached, repeat with --offline. The implementation uses Windows system APIs
+instead of adding new external crypto/network packages.
+
+Read [AGENTS.md](AGENTS.md), [SECURITY.md](SECURITY.md), the baseline
+[protocol](doc/protocol.md), [architecture map](doc/maps.md), and
+[migration plan](doc/migration.md). Those baseline documents describe the earlier
+foundation; [doc/receiver.md](doc/receiver.md) specifies the additions and their
+remaining trust/verification gaps. Historical [audit](audit/REPORT.md) and tests
+are preserved, not relabelled as current acceptance.
+
+## End-to-end acceptance still open
+
+A successful durable enqueue does not prove provider acceptance, worker receipt
+or completed work. Actual Codex connection/account/thread isolation, MCP caller
+authorization and outbound replies need separate implementation and approval.
+Do not claim end-to-end readiness until those paths have been tested on two
+real registered chats with explicit owner authorization.

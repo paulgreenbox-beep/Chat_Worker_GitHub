@@ -1,0 +1,46 @@
+command: cargo test -p cwg-security --locked --offline cng_ -- --nocapture
+CARGO_NET_OFFLINE=true
+exit_code: 101
+stdout:
+
+running 8 tests
+real CNG invalid output size: Trace { open_status: 0, hash_status: -1073741811, close_status: 0, open_calls: 1, hash_calls: 1, close_calls: 1, successful_opens: 1, successful_closes: 1, live_providers: 0, bad_parameters: false }
+real CNG invalid algorithm: Trace { open_status: -1073741275, hash_status: 0, close_status: 0, open_calls: 1, hash_calls: 0, close_calls: 0, successful_opens: 0, successful_closes: 0, live_providers: 0, bad_parameters: false }
+test windows_cng::tests::cng_injected_hash_failure_attempts_close_exactly_once ... ok
+test windows_cng::tests::cng_injected_open_failure_never_hashes_or_closes ... ok
+test windows_cng::tests::cng_injected_close_failure_is_distinct_from_hash_failure ... FAILED
+test windows_cng::tests::cng_injected_hash_and_close_failures_preserve_both_outcomes ... FAILED
+test windows_cng::tests::cng_native_hash_failure_closes_real_provider_once ... ok
+test windows_cng::tests::cng_native_open_failure_creates_no_owned_provider ... ok
+test windows_cng::tests::cng_native_rfc4231_vectors_and_exact_binary_bytes ... ok
+real CNG provider lifetime count: Trace { open_status: 0, hash_status: 0, close_status: 0, open_calls: 256, hash_calls: 256, close_calls: 256, successful_opens: 256, successful_closes: 256, live_providers: 0, bad_parameters: false }
+test windows_cng::tests::cng_native_repeated_real_providers_close_with_balanced_successes ... ok
+
+failures:
+
+failures:
+    windows_cng::tests::cng_injected_close_failure_is_distinct_from_hash_failure
+    windows_cng::tests::cng_injected_hash_and_close_failures_preserve_both_outcomes
+
+test result: FAILED. 6 passed; 2 failed; 0 ignored; 0 measured; 6 filtered out; finished in 0.00s
+
+
+stderr:
+   Compiling serde v1.0.229
+   Compiling cwg-security v0.1.0 (<workspace>\CWG_Security)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.60s
+     Running unittests src\lib.rs (target\debug\deps\cwg_security-fc42b3089c59d596.exe)
+
+thread 'windows_cng::tests::cng_injected_close_failure_is_distinct_from_hash_failure' (7856) panicked at CWG_Security\src\windows_cng.rs:132:9:
+assertion `left == right` failed
+  left: Err("CNG_HASH_FAILED")
+ right: Err("CNG_CLOSE_FAILED")
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+thread 'windows_cng::tests::cng_injected_hash_and_close_failures_preserve_both_outcomes' (31212) panicked at CWG_Security\src\windows_cng.rs:144:9:
+assertion `left == right` failed
+  left: Err("CNG_HASH_FAILED")
+ right: Err("CNG_HASH_AND_CLOSE_FAILED")
+error: test failed, to rerun pass `-p cwg-security --lib`
+
+error: null

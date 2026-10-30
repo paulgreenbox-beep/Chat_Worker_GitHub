@@ -6,5 +6,9 @@
 *.db
 *.sqlite
 secrets/
+# Private receiver config and durable task content must never be published.
+receiver.local.json
+.cwg-state/
+inbox.jsonl
 # Preserved local fixtures created by audit tooling tests; never publication input.
 /audit/.scratch/

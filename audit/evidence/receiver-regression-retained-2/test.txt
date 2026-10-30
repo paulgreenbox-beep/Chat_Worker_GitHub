@@ -1,0 +1,55 @@
+command: cargo test -p cwg-state --test retained_access --locked --offline security_regression_ -- --nocapture
+CARGO_NET_OFFLINE=true
+exit_code: 101
+stdout:
+
+running 2 tests
+test security_regression_prior_writer_config_is_refused_after_acl_tightening ... FAILED
+test security_regression_writable_mapping_journal_is_refused_after_writer_closes ... FAILED
+
+failures:
+
+failures:
+    security_regression_prior_writer_config_is_refused_after_acl_tightening
+    security_regression_writable_mapping_journal_is_refused_after_writer_closes
+
+test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+stderr:
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+   Compiling unicode-ident v1.0.27
+   Compiling serde_core v1.0.229
+   Compiling zmij v1.0.23
+   Compiling serde v1.0.229
+   Compiling serde_json v1.0.154
+   Compiling memchr v2.8.3
+   Compiling itoa v1.0.18
+   Compiling syn v3.0.9
+   Compiling serde_derive v1.0.229
+   Compiling cwg-protocol v0.1.0 (<workspace>\CWG_Protocol)
+   Compiling cwg-security v0.1.0 (<workspace>\CWG_Security)
+warning: unused import: `path::Path`
+  --> CWG_Security\src\windows_acl.rs:10:21
+   |
+10 | use std::{fs::File, path::Path};
+   |                     ^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+   Compiling cwg-router v0.1.0 (<workspace>\CWG_Router)
+   Compiling cwg-state v0.1.0 (<workspace>\CWG_State)
+warning: `cwg-security` (lib) generated 1 warning (run `cargo fix --lib -p cwg-security` to apply 1 suggestion)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 5.87s
+     Running tests\retained_access.rs (target\debug\deps\retained_access-8b5def9723d19ad1.exe)
+
+thread 'security_regression_prior_writer_config_is_refused_after_acl_tightening' (17520) panicked at CWG_State\tests\retained_access.rs:21:47:
+called `Result::unwrap()` on an `Err` value: "ACL_UNTRUSTED_ACCESS"
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+thread 'security_regression_writable_mapping_journal_is_refused_after_writer_closes' (16232) panicked at CWG_State\tests\retained_access.rs:35:40:
+called `Result::unwrap()` on an `Err` value: "ACL_UNTRUSTED_ACCESS"
+error: test failed, to rerun pass `-p cwg-state --test retained_access`
+
+error: null

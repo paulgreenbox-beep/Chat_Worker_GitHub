@@ -26,7 +26,7 @@ Forged signature, malformed JSON and duplicate keys, wrong repository/author, st
 
 Current source implements structural message/binding validation, object-only typed deserialization, a bounded raw JSON decode API, raw-JSON unknown/duplicate-field rejection, scoped message correlation, finite Router admission budgets, binding suspension, in-memory deduplication and guarded state transitions. See [test matrix](doc/testing.md), [security follow-up](audit/SECURITY_REVIEW.md) and [historical first-pass audit](audit/REPORT.md). Original unit test scenarios/assertions remain present; Router calls now use explicit scoped keys.
 
-The ingress, binding owner authorization, GitHub actor authorization, numeric repository/account/generation binding, signatures, permission reconciliation, persistence, distributed atomic claims, provider receipts and outbound authorization described above remain requirements, not implemented guarantees. `register`, `enqueue_verified` and status methods are ordinary public Rust APIs with trusted-controller preconditions. They cannot refuse a caller based on identity because no caller authentication exists. Do not expose them directly to untrusted clients or invent an `approved: true` flag as authorization.
+The Protocol/Router model alone does not implement authenticated ingress or persistence. The receiver additions described below implement a limited ingress-to-inbox path. Binding-owner caller authentication, distributed atomic claims, real Codex account/thread ownership, provider receipts and outbound authorization remain external requirements. `register`, `enqueue_verified`, `put_verified` and status methods are ordinary public Rust APIs with trusted-controller preconditions. They cannot refuse a caller based on identity because no caller authentication exists. Do not expose them directly to untrusted clients or invent an `approved: true` flag as authorization.
 
 Public numeric IDs are syntactically validated but can still be spoofed by an untrusted caller. Message IDs are now scoped by canonical repository; every query/transition additionally checks the expected GOAL and target. This guards correlation mistakes, not caller identity. Repository-name normalization closes case aliases, not rename/recreation attacks. A trusted controller may suspend a binding irreversibly to refuse new admission/claims while retaining messages, replay history and in-flight outcomes; detecting stale threads and authorizing that controller remain external requirements.
 
@@ -34,4 +34,40 @@ Router defaults bound bindings, retained messages and cumulative body bytes. Cap
 
 Use `Message::from_json_slice` to reject raw documents larger than 400 KiB before entering the JSON parser. Wire string visitors reject decoded oversize strings before copying borrowed strings into the model; a generic Serde parser can still allocate its own escape scratch before calling a visitor, so direct generic deserialization requires an external raw-byte bound. The slice API is a Protocol decoder, not a network receiver: limiting inbound streams and authenticating them remain future ingress work. Generic map/Value decoding discards duplicate keys, so parse raw bytes directly. Message Debug redacts the body, but other identifiers and arbitrary application logs are not a comprehensive secret-redaction boundary. No body text is interpreted by Router as registration policy or executable code.
 
-Tests with `Mutex<Router>` and two logical Codex thread IDs cover only local model behavior. Live GitHub delivery, real caller authorization, Codex thread isolation, crash/restart recovery and release acceptance remain **NOT_RUN**. No source-only result qualifies CWG for operation.
+## Windows receiver additions
+
+`CWG_GitHub` validates exact-byte CNG HMAC before raw JSON decoding and current
+GitHub repository/Issue/comment/actor permission reconciliation. Unknown GitHub
+extensions remain bounded data; duplicate keys, including nested unknown keys,
+are refused. Typed security objects must be named-field objects, not positional
+arrays. Routes and authorized numeric senders come from private local config.
+Production WinHTTP uses a fixed GitHub HTTPS host, explicit TLS 1.2, no proxy,
+redirects or automatic credentials, one connection attempt, private session
+transport state without global cross-session pooling, bounded reads and
+checked handle cleanup. Cleanup or uncertain persistence never means success.
+
+`CWG_State` replays the existing Router under a native file lock, persists
+delivery-to-message associations, and syncs every successful transaction before
+returning. Interrupted DELIVERING and UNKNOWN messages cannot be claimed again.
+The owner-configured binding and these logical namespaces are not proof of live
+Codex identity. Registration and transition APIs remain trusted-controller APIs.
+
+Runtime checks query the real owner/DACL on config, journal and ancestor handles.
+Config/journal handles refuse concurrent or retained data writers and writable
+mappings; ancestor handles guard against rename/deletion. Reparse points, hard
+links, non-local storage and ambiguous paths are refused. Unsupported policies
+fail closed. Provision **fresh private** config/state before any untrusted
+access: changing an old public ACL does not revoke historical directory/ACL
+handles. Owner, SYSTEM and Administrators are trusted; this is not protection
+against those identities, privileged drivers or physical access. Data is not
+encrypted or cryptographically tamper-proof.
+
+See [native Windows verification](audit/RECEIVER_WINDOWS_VERIFICATION.md) for
+actual commands, source SHAs, security findings and controlled-loopback results.
+Process interruption, partial-write/flush injection and native ACL tests do not
+establish power-loss durability, which remains **NOT_VERIFIED**.
+
+Tests with two logical Codex thread IDs cover only local routing/queue behavior.
+Live GitHub webhook delivery, production TLS/proxy, installed service startup,
+real caller authorization, Codex delivery/thread isolation and release acceptance
+remain **NOT_RUN**. Native source tests do not qualify CWG for deployment.

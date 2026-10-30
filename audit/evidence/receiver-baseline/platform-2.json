@@ -1,0 +1,25 @@
+{
+  "commands": [
+    {
+      "status": "PASS",
+      "exit_code": 0,
+      "class": "Win32_OperatingSystem"
+    },
+    {
+      "status": "PASS",
+      "exit_code": 0,
+      "class": "Win32_ComputerSystem"
+    }
+  ],
+  "os": {
+    "Caption": "Майкрософт Windows 11 Pro",
+    "Version": "10.0.26300",
+    "OSArchitecture": "64-разрядная"
+  },
+  "is64bit": true,
+  "machine": {
+    "Manufacturer": "GIGABYTE",
+    "Model": "GIGABYTE AERO X16 1VH",
+    "HypervisorPresent": true
+  }
+}

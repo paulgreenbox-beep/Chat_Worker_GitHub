@@ -1,0 +1,48 @@
+command: cargo test -p cwg-state --lib --locked --offline commit_tests -- --nocapture
+CARGO_NET_OFFLINE=true
+exit_code: 101
+stdout:
+
+running 3 tests
+test commit_tests::even_a_no_op_refuses_success_when_observed_journal_cannot_be_synchronized ... FAILED
+test commit_tests::partial_append_is_unknown_and_never_automatically_replayed_or_removed ... ok
+test commit_tests::visible_append_with_failed_sync_is_not_durable_until_reconciliation_sync_succeeds ... FAILED
+
+failures:
+
+failures:
+    commit_tests::even_a_no_op_refuses_success_when_observed_journal_cannot_be_synchronized
+    commit_tests::visible_append_with_failed_sync_is_not_durable_until_reconciliation_sync_succeeds
+
+test result: FAILED. 1 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+stderr:
+warning: hard linking files in the incremental compilation cache failed. copying files instead. consider moving the cache directory to a file system which supports hard linking in session dir `\\?\<workspace>\target\debug\incremental\cwg_security-0n9qbed65jvoo\s-hnp4r01f9f-1079fyj-working`
+
+warning: unused import: `path::Path`
+  --> CWG_Security\src\windows_acl.rs:10:21
+   |
+10 | use std::{fs::File, path::Path};
+   |                     ^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: `cwg-security` (lib) generated 2 warnings (run `cargo fix --lib -p cwg-security` to apply 1 suggestion)
+   Compiling cwg-state v0.1.0 (<workspace>\CWG_State)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.82s
+     Running unittests src\lib.rs (target\debug\deps\cwg_state-e6fa1ab8e17cd138.exe)
+
+thread 'commit_tests::even_a_no_op_refuses_success_when_observed_journal_cannot_be_synchronized' (29284) panicked at CWG_State\src\lib.rs:410:9:
+assertion `left == right` failed
+  left: Ok(())
+ right: Err("STATE_COMMIT_UNKNOWN")
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+thread 'commit_tests::visible_append_with_failed_sync_is_not_durable_until_reconciliation_sync_succeeds' (31556) panicked at CWG_State\src\lib.rs:398:9:
+assertion `left == right` failed
+  left: Ok(())
+ right: Err("STATE_COMMIT_UNKNOWN")
+error: test failed, to rerun pass `-p cwg-state --lib`
+
+error: null

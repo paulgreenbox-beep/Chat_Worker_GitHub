@@ -1,0 +1,65 @@
+command: cargo test -p cwg-github --lib --locked --offline audit_ -- --nocapture
+CARGO_NET_OFFLINE=true
+exit_code: 101
+stdout:
+
+running 28 tests
+test tests::audit_api_comment_author_bot ... ok
+test tests::audit_api_comment_author_id ... ok
+test tests::audit_api_comment_author_login ... ok
+test tests::audit_api_comment_body ... ok
+test tests::audit_api_comment_calendar ... ok
+test tests::audit_api_comment_edited ... ok
+test tests::audit_api_comment_id ... ok
+test tests::audit_api_comment_issue_url ... ok
+test tests::audit_api_comment_zero ... ok
+test tests::audit_api_issue_closed ... ok
+test tests::audit_api_issue_id ... ok
+test tests::audit_api_issue_is_pr ... ok
+test tests::audit_api_issue_locked ... ok
+test tests::audit_api_issue_number ... ok
+test tests::audit_api_permission_bot ... ok
+test tests::audit_api_permission_id ... ok
+test tests::audit_api_permission_login ... ok
+test tests::audit_api_permission_none ... ok
+test tests::audit_api_permission_read ... ok
+test tests::audit_api_permission_triage ... ok
+test tests::audit_api_permission_unknown ... ok
+test tests::audit_api_repository_id ... ok
+test tests::audit_api_repository_name ... ok
+test tests::audit_api_repository_owner ... ok
+test tests::audit_api_typed_arrays_are_refused ... FAILED
+test tests::audit_config_and_nested_routes_require_objects ... FAILED
+test tests::audit_event_and_every_nested_identity_require_objects ... FAILED
+test tests::audit_each_api_error_propagates_without_authorization_fallback ... ok
+
+failures:
+
+failures:
+    tests::audit_api_typed_arrays_are_refused
+    tests::audit_config_and_nested_routes_require_objects
+    tests::audit_event_and_every_nested_identity_require_objects
+
+test result: FAILED. 25 passed; 3 failed; 0 ignored; 0 measured; 24 filtered out; finished in 0.01s
+
+
+stderr:
+   Compiling cwg-security v0.1.0 (<workspace>\CWG_Security)
+   Compiling cwg-github v0.1.0 (<workspace>\CWG_GitHub)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.79s
+     Running unittests src\lib.rs (target\debug\deps\cwg_github-a21bf4f20bf26e84.exe)
+
+thread 'tests::audit_api_typed_arrays_are_refused' (3812) panicked at CWG_GitHub\src\tests.rs:128:5:
+assertion `left == right` failed
+  left: None
+ right: Some("JSON_SCHEMA")
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+thread 'tests::audit_config_and_nested_routes_require_objects' (19372) panicked at CWG_GitHub\src\tests.rs:104:5:
+positional Config accepted
+
+thread 'tests::audit_event_and_every_nested_identity_require_objects' (32072) panicked at CWG_GitHub\src\tests.rs:120:9:
+positional Event accepted
+error: test failed, to rerun pass `-p cwg-github --lib`
+
+error: null

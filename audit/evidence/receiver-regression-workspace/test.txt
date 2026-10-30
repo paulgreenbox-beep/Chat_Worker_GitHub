@@ -1,0 +1,119 @@
+command: cargo test --workspace --all-targets --locked --offline
+CARGO_NET_OFFLINE=true
+exit_code: 4294967295
+stdout:
+
+running 54 tests
+test http::tests::ambiguous_framing_refused ... ok
+test http::tests::duplicate_length_and_signature_are_refused ... ok
+test http::tests::header_newline_injection_refused ... ok
+test http::tests::http_security_regression_bad_mac_shape_is_refused_before_body_read ... ok
+test http::tests::http_security_regression_empty_host_is_rejected ... ok
+test http::tests::http_security_regression_missing_signature_is_refused_before_body_read ... ok
+test http::tests::http_security_regression_unknown_event_is_refused_before_body_read ... ok
+test http::tests::length_bounds_and_truncation_refused ... ok
+test http::tests::preserves_exact_body ... ok
+test tests::ambiguous_routes_and_public_listen_are_rejected ... ok
+test tests::api_errors_are_not_authorization ... ok
+test tests::audit_api_comment_author_bot ... ok
+test tests::audit_api_comment_author_id ... ok
+test tests::audit_api_comment_author_login ... ok
+test tests::audit_api_comment_body ... ok
+test tests::audit_api_comment_calendar ... ok
+test tests::audit_api_comment_edited ... ok
+test tests::audit_api_comment_id ... ok
+test tests::audit_api_comment_issue_url ... ok
+test tests::audit_api_comment_zero ... ok
+test tests::audit_api_issue_closed ... ok
+test tests::audit_api_issue_id ... ok
+test tests::audit_api_issue_is_pr ... ok
+test tests::audit_api_issue_locked ... ok
+test tests::audit_api_issue_number ... ok
+test tests::audit_api_permission_bot ... ok
+test tests::audit_api_permission_id ... ok
+test tests::audit_api_permission_login ... ok
+test tests::audit_api_permission_none ... ok
+test tests::audit_api_permission_read ... ok
+test tests::audit_api_permission_triage ... ok
+test tests::audit_api_permission_unknown ... ok
+test tests::audit_api_repository_id ... ok
+test tests::audit_api_repository_name ... ok
+test tests::audit_api_repository_owner ... ok
+test tests::audit_api_typed_arrays_are_refused ... ok
+test tests::audit_config_and_nested_routes_require_objects ... ok
+test tests::calendar_cutoff_is_validated ... ok
+test tests::audit_each_api_error_propagates_without_authorization_fallback ... ok
+test tests::audit_event_and_every_nested_identity_require_objects ... ok
+test tests::changed_or_edited_comment_is_not_delivered ... ok
+test tests::historical_comment_before_registration_is_refused ... ok
+test tests::closed_locked_and_pr_threads_are_rejected ... ok
+test tests::payload_url_is_not_used_as_an_api_destination ... ok
+test tests::permission_identity_must_match ... ok
+test tests::recreated_repository_is_refused ... ok
+test tests::revoked_actor_permission_is_refused ... ok
+test tests::routes_from_config_not_task_text ... ok
+test tests::source_owner_transfer_is_refused ... ok
+test tests::unauthorized_sender_causes_no_api_requests ... ok
+test tests::wrong_installation_and_bot_are_rejected ... ok
+test tests::signed_fixture_commits_once_and_bad_mac_never_reads_api ... FAILED
+test http::tests::native_stream_deadline_refuses_slow_header_and_body has been running for over 60 seconds
+test http::tests::native_stream_interrupted_body_is_refused has been running for over 60 seconds
+
+stderr:
+   Compiling cwg-security v0.1.0 (<workspace>\CWG_Security)
+warning: hard linking files in the incremental compilation cache failed. copying files instead. consider moving the cache directory to a file system which supports hard linking in session dir `\\?\<workspace>\target\debug\incremental\cwg_security-2dswbwd0qvjuu\s-hnp4t5ryi4-08f3vlh-working`
+
+warning: hard linking files in the incremental compilation cache failed. copying files instead. consider moving the cache directory to a file system which supports hard linking in session dir `\\?\<workspace>\target\debug\incremental\cwg_security-0n9qbed65jvoo\s-hnp4t5s5wy-1smgp1o-working`
+
+warning: unused import: `path::Path`
+  --> CWG_Security\src\windows_acl.rs:10:21
+   |
+10 | use std::{fs::File, path::Path};
+   |                     ^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+   Compiling cwg-state v0.1.0 (<workspace>\CWG_State)
+warning: hard linking files in the incremental compilation cache failed. copying files instead. consider moving the cache directory to a file system which supports hard linking in session dir `\\?\<workspace>\target\debug\incremental\cwg_state-0bb61zxr2zsr0\s-hnp4t5yd5y-0k2a21u-working`
+
+warning: `cwg-security` (lib) generated 2 warnings (1 duplicate)
+warning: hard linking files in the incremental compilation cache failed. copying files instead. consider moving the cache directory to a file system which supports hard linking in session dir `\\?\<workspace>\target\debug\incremental\cwg_state-156119rtaycpf\s-hnp4t669pv-0x271jg-working`
+
+   Compiling cwg-github v0.1.0 (<workspace>\CWG_GitHub)
+warning: `cwg-state` (lib) generated 1 warning
+warning: `cwg-security` (lib test) generated 2 warnings (run `cargo fix --lib -p cwg-security --tests` to apply 1 suggestion)
+warning: `cwg-state` (lib test) generated 1 warning
+warning: function `UnmapViewOfFile` is never used
+   --> CWG_State\tests\support\windows_fixture.rs:149:8
+    |
+149 |     fn UnmapViewOfFile(view: *const c_void) -> i32;
+    |        ^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: hard linking files in the incremental compilation cache failed. copying files instead. consider moving the cache directory to a file system which supports hard linking in session dir `\\?\<workspace>\target\debug\incremental\cwg_state_fixture-36dnisd6awmc4\s-hnp4t6p6mi-1ruzuwj-working`
+
+warning: hard linking files in the incremental compilation cache failed. copying files instead. consider moving the cache directory to a file system which supports hard linking in session dir `\\?\<workspace>\target\debug\incremental\retained_access-0jbm6t10wjhxq\s-hnp4t6og5k-158cj18-working`
+
+warning: `cwg-state` (bin "cwg-state-fixture") generated 1 warning
+warning: `cwg-state` (test "retained_access") generated 1 warning
+warning: function `UnmapViewOfFile` is never used
+   --> CWG_GitHub\src\..\..\CWG_State\tests\support\windows_fixture.rs:149:8
+    |
+149 |     fn UnmapViewOfFile(view: *const c_void) -> i32;
+    |        ^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `cwg-state` (test "durable") generated 1 warning (1 duplicate)
+warning: `cwg-state` (test "native_process") generated 1 warning
+warning: `cwg-github` (bin "cwg-github" test) generated 1 warning
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 5.14s
+     Running unittests src\lib.rs (target\debug\deps\cwg_github-b0a0d333dcbedb69.exe)
+error: test failed, to rerun pass `-p cwg-github --lib`
+
+Caused by:
+  process didn't exit successfully: `<workspace>\target\debug\deps\cwg_github-b0a0d333dcbedb69.exe` (exit code: 0xffffffff)
+note: test exited abnormally; to see the full output pass --no-capture to the harness.
+
+error: null

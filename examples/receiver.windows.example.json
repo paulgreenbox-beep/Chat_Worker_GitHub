@@ -1,0 +1,26 @@
+{
+  "schema": "cwg-github-receiver-v1",
+  "enabled": false,
+  "listen": "127.0.0.1:8731",
+  "state_directory": "C:\\CWG-Private\\state",
+  "webhook_secret_env": "CWG_WEBHOOK_SECRET",
+  "github_token_env": "CWG_GITHUB_TOKEN",
+  "routes": [
+    {
+      "binding": {
+        "id": "development",
+        "repository_id": 1,
+        "owner_id": 1,
+        "repository": "example/project",
+        "issue_number": 1,
+        "goal_id": "CWG-001",
+        "generation": 1,
+        "account_id": "operator-approved-account",
+        "target": {"provider": "codex", "thread_id": "replace-with-observed-thread-id"}
+      },
+      "author_ids": [1],
+      "not_before": "2026-10-30T00:00:00Z",
+      "installation_id": null
+    }
+  ]
+}

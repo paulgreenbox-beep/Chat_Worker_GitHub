@@ -1,0 +1,10 @@
+command: cargo build --workspace --locked
+CARGO_NET_OFFLINE=true
+exit_code: 0
+stdout:
+
+stderr:
+   Compiling cwg-github v0.1.0 (<workspace>\CWG_GitHub)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.92s
+
+error: null

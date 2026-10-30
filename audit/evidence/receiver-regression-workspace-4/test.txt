@@ -1,0 +1,112 @@
+command: cargo test --workspace --all-targets --locked --offline
+CARGO_NET_OFFLINE=true
+exit_code: 101
+stdout:
+
+running 55 tests
+test http::tests::duplicate_length_and_signature_are_refused ... ok
+test http::tests::ambiguous_framing_refused ... ok
+test http::tests::header_newline_injection_refused ... ok
+test http::tests::header_limit_is_checked_before_unbounded_input ... ok
+test http::tests::http_security_regression_bad_mac_shape_is_refused_before_body_read ... ok
+test http::tests::http_security_regression_empty_host_is_rejected ... ok
+test http::tests::http_security_regression_missing_signature_is_refused_before_body_read ... ok
+test http::tests::http_security_regression_unknown_event_is_refused_before_body_read ... ok
+test http::tests::length_bounds_and_truncation_refused ... ok
+test http::tests::preserves_exact_body ... ok
+test tests::ambiguous_routes_and_public_listen_are_rejected ... ok
+test tests::api_errors_are_not_authorization ... ok
+test tests::audit_api_comment_author_bot ... ok
+test tests::audit_api_comment_author_id ... ok
+test tests::audit_api_comment_author_login ... ok
+test tests::audit_api_comment_body ... ok
+test tests::audit_api_comment_calendar ... ok
+test tests::audit_api_comment_edited ... ok
+test tests::audit_api_comment_id ... ok
+test tests::audit_api_comment_issue_url ... ok
+test tests::audit_api_comment_zero ... ok
+test tests::audit_api_issue_closed ... ok
+test tests::audit_api_issue_id ... ok
+test tests::audit_api_issue_is_pr ... ok
+test tests::audit_api_issue_locked ... ok
+test http::tests::native_stream_interrupted_body_is_refused ... ok
+test tests::audit_api_issue_number ... ok
+test tests::audit_api_permission_bot ... ok
+test tests::audit_api_permission_id ... ok
+test tests::audit_api_permission_login ... ok
+test tests::audit_api_permission_none ... ok
+test tests::audit_api_permission_read ... ok
+test tests::audit_api_permission_triage ... ok
+test tests::audit_api_permission_unknown ... ok
+test tests::audit_api_repository_id ... ok
+test tests::audit_api_repository_name ... ok
+test tests::audit_api_repository_owner ... ok
+test tests::audit_api_typed_arrays_are_refused ... ok
+test tests::audit_config_and_nested_routes_require_objects ... ok
+test tests::calendar_cutoff_is_validated ... ok
+test tests::audit_each_api_error_propagates_without_authorization_fallback ... ok
+test tests::audit_event_and_every_nested_identity_require_objects ... ok
+test tests::changed_or_edited_comment_is_not_delivered ... ok
+test tests::historical_comment_before_registration_is_refused ... ok
+test tests::closed_locked_and_pr_threads_are_rejected ... ok
+test tests::payload_url_is_not_used_as_an_api_destination ... ok
+test tests::permission_identity_must_match ... ok
+test tests::recreated_repository_is_refused ... ok
+test tests::revoked_actor_permission_is_refused ... ok
+test tests::routes_from_config_not_task_text ... ok
+test tests::source_owner_transfer_is_refused ... ok
+test tests::unauthorized_sender_causes_no_api_requests ... ok
+test tests::wrong_installation_and_bot_are_rejected ... ok
+test tests::signed_fixture_commits_once_and_bad_mac_never_reads_api ... ok
+test http::tests::native_stream_deadline_refuses_slow_header_and_body ... ok
+
+test result: ok. 55 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.31s
+
+
+running 19 tests
+test windows::tests::audit_cleanup_failure_keeps_operation_failure_class ... ok
+test windows::tests::audit_connect_attempt_policy_is_single_attempt ... ok
+test windows::tests::audit_explicit_modern_tls_policy_is_required ... ok
+test windows::tests::audit_failed_native_close_is_not_reported_as_success ... ok
+test windows::tests::audit_fixture_client_refuses_non_loopback_without_network ... ok
+test windows::tests::audit_invalid_path_or_deadline_opens_no_handle ... ok
+test native_tests::native_owner_config_refuses_corruption_unprotected_acl_and_alias_paths ... ok
+test native_tests::native_cng_and_cleanup_failures_are_service_errors_not_authorization_success ... ok
+test windows::tests::audit_native_session_policy_is_observable ... FAILED
+test windows::tests::audit_response_length_query_errors_are_not_treated_as_absent ... ok
+test windows::tests::audit_token_format_rejects_header_injection_before_network ... ok
+test windows::tests::audit_native_loopback_get_has_no_credentials_and_closes_owned_handles ... ok
+test windows::tests::audit_native_redirect_is_refused_without_following_location ... ok
+test windows::tests::audit_native_response_limit_fails_closed_and_closes_handles ... ok
+test windows::tests::audit_native_truncated_response_is_not_accepted ... ok
+test windows::tests::audit_native_exact_response_boundary_and_missing_length ... ok
+test windows::tests::audit_native_denied_status_and_auth_challenge_do_not_authorize ... ok
+test native_tests::native_receiver_end_to_end_uses_cng_winhttp_and_durable_scoped_inbox ... ok
+test windows::tests::audit_native_timeout_refuses_and_releases_owned_handles ... ok
+
+failures:
+
+---- windows::tests::audit_native_session_policy_is_observable stdout ----
+
+thread 'windows::tests::audit_native_session_policy_is_observable' (19220) panicked at CWG_GitHub\src\windows.rs:624:13:
+assertion `left == right` failed
+  left: 87
+ right: 12009
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    windows::tests::audit_native_session_policy_is_observable
+
+test result: FAILED. 18 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.28s
+
+
+stderr:
+   Compiling cwg-state v0.1.0 (<workspace>\CWG_State)
+   Compiling cwg-github v0.1.0 (<workspace>\CWG_GitHub)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.89s
+     Running unittests src\lib.rs (target\debug\deps\cwg_github-b0a0d333dcbedb69.exe)
+     Running unittests src\main.rs (target\debug\deps\cwg_github-3805a0d3b3314014.exe)
+error: test failed, to rerun pass `-p cwg-github --bin cwg-github`
+
+error: null

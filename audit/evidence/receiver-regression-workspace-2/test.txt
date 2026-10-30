@@ -1,0 +1,208 @@
+command: cargo test --workspace --all-targets --locked --offline
+CARGO_NET_OFFLINE=true
+exit_code: 101
+stdout:
+
+stderr:
+   Compiling cwg-security v0.1.0 (<workspace>\CWG_Security)
+   Compiling cwg-state v0.1.0 (<workspace>\CWG_State)
+   Compiling cwg-github v0.1.0 (<workspace>\CWG_GitHub)
+error: usage of an `unsafe extern` block
+   --> CWG_GitHub\src\..\..\CWG_State\tests\support\windows_fixture.rs:115:1
+    |
+115 | / unsafe extern "system" {
+116 | |     fn OpenProcessToken(process: Handle, access: u32, token: *mut Handle) -> i32;
+117 | |     fn GetTokenInformation(
+118 | |         token: Handle,
+...   |
+145 | |     ) -> u32;
+146 | | }
+    | |_^
+    |
+note: the lint level is defined here
+   --> CWG_GitHub\src\lib.rs:2:11
+    |
+  2 | #![forbid(unsafe_code)]
+    |           ^^^^^^^^^^^
+
+error: usage of an `unsafe extern` block
+   --> CWG_GitHub\src\..\..\CWG_State\tests\support\windows_fixture.rs:148:1
+    |
+148 | / unsafe extern "system" {
+149 | |     fn GetCurrentProcess() -> Handle;
+150 | |     fn CloseHandle(handle: Handle) -> i32;
+151 | |     fn LocalFree(memory: *mut c_void) -> *mut c_void;
+...   |
+179 | |     ) -> i32;
+180 | | }
+    | |_^
+
+error: usage of an `unsafe` block
+   --> CWG_GitHub\src\..\..\CWG_State\tests\support\windows_fixture.rs:184:9
+    |
+184 | /         unsafe {
+185 | |             LocalFree(self.0);
+186 | |         }
+    | |_________^
+
+error: usage of an `unsafe` block
+   --> CWG_GitHub\src\..\..\CWG_State\tests\support\windows_fixture.rs:192:9
+    |
+192 | /         unsafe {
+193 | |             CloseHandle(self.0);
+194 | |         }
+    | |_________^
+
+error: usage of an `unsafe` block
+   --> CWG_GitHub\src\..\..\CWG_State\tests\support\windows_fixture.rs:200:8
+    |
+200 |     if unsafe { OpenProcessToken(GetCurrentProcess(), 8, &mut handle) } == 0 {
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: usage of an `unsafe` block
+   --> CWG_GitHub\src\..\..\CWG_State\tests\support\windows_fixture.rs:206:5
+    |
+206 | /     unsafe {
+207 | |         GetTokenInformation(token.0, 1, ptr::null_mut(), 0, &mut required);
+208 | |     }
+    | |_____^
+
+error: usage of an `unsafe` block
+   --> CWG_GitHub\src\..\..\CWG_State\tests\support\windows_fixture.rs:213:8
+    |
+213 |       if unsafe {
+    |  ________^
+214 | |         GetTokenInformation(
+215 | |             token.0,
+216 | |             1,
+...   |
+221 | |     } == 0
+    | |_____^
+
+error: usage of an `unsafe` block
+   --> CWG_GitHub\src\..\..\CWG_State\tests\support\windows_fixture.rs:225:16
+    |
+225 |     let user = unsafe { ptr::read_unaligned(buffer.as_ptr().cast::<TokenUser>()) };
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: usage of an `unsafe` block
+   --> CWG_GitHub\src\..\..\CWG_State\tests\support\windows_fixture.rs:229:8
+    |
+229 |     if unsafe { ConvertSidToStringSidW(user.sid, &mut text) } == 0 {
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: usage of an `unsafe` block
+   --> CWG_GitHub\src\..\..\CWG_State\tests\support\windows_fixture.rs:234:27
+    |
+234 |     while length < 256 && unsafe { *text.add(length) } != 0 {
+    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: usage of an `unsafe` block
+   --> CWG_GitHub\src\..\..\CWG_State\tests\support\windows_fixture.rs:240:33
+    |
+240 |       Ok(String::from_utf16_lossy(unsafe {
+    |  _________________________________^
+241 | |         std::slice::from_raw_parts(text, length)
+242 | |     }))
+    | |_____^
+
+error: usage of an `unsafe` block
+   --> CWG_GitHub\src\..\..\CWG_State\tests\support\windows_fixture.rs:264:8
+    |
+264 |       if unsafe {
+    |  ________^
+265 | |         ConvertStringSecurityDescriptorToSecurityDescriptorW(
+266 | |             text.as_ptr(),
+267 | |             1,
+...   |
+271 | |     } == 0
+    | |_____^
+
+error: usage of an `unsafe` block
+   --> CWG_GitHub\src\..\..\CWG_State\tests\support\windows_fixture.rs:279:8
+    |
+279 |     if unsafe { GetSecurityDescriptorDacl(descriptor, &mut present, &mut dacl, &mut defaulted) }
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: usage of an `unsafe` block
+   --> CWG_GitHub\src\..\..\CWG_State\tests\support\windows_fixture.rs:298:18
+    |
+298 |       let status = unsafe {
+    |  __________________^
+299 | |         SetSecurityInfo(
+300 | |             file.as_raw_handle(),
+301 | |             1,
+...   |
+308 | |     };
+    | |_____^
+
+error: usage of an `unsafe` block
+   --> CWG_GitHub\src\..\..\CWG_State\tests\support\windows_fixture.rs:338:13
+    |
+338 |             unsafe { CreateFileMappingW(file.as_raw_handle(), ptr::null(), 4, 0, 0, ptr::null()) };
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: usage of an `unsafe` block
+   --> CWG_GitHub\src\..\..\CWG_State\tests\support\windows_fixture.rs:342:20
+    |
+342 |         let view = unsafe { MapViewOfFile(mapping, 2, 0, 0, length) };
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: usage of an `unsafe` block
+   --> CWG_GitHub\src\..\..\CWG_State\tests\support\windows_fixture.rs:345:13
+    |
+345 | /             unsafe {
+346 | |                 CloseHandle(mapping);
+347 | |             }
+    | |_____________^
+
+error: usage of an `unsafe` block
+   --> CWG_GitHub\src\..\..\CWG_State\tests\support\windows_fixture.rs:356:9
+    |
+356 | /         unsafe {
+357 | |             ptr::write_volatile(self.view.cast::<u8>(), value);
+358 | |         }
+    | |_________^
+
+error: usage of an `unsafe` block
+   --> CWG_GitHub\src\..\..\CWG_State\tests\support\windows_fixture.rs:359:12
+    |
+359 |         if unsafe { FlushViewOfFile(self.view, 1) } == 0 {
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: usage of an `unsafe` block
+   --> CWG_GitHub\src\..\..\CWG_State\tests\support\windows_fixture.rs:369:13
+    |
+369 |             unsafe { UnmapViewOfFile(self.view) },
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: usage of an `unsafe` block
+   --> CWG_GitHub\src\..\..\CWG_State\tests\support\windows_fixture.rs:374:13
+    |
+374 |             unsafe { CloseHandle(self.mapping) },
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: usage of an `unsafe` block
+   --> CWG_GitHub\src\..\..\CWG_State\tests\support\windows_fixture.rs:432:5
+    |
+432 | /     unsafe {
+433 | |         ptr::copy_nonoverlapping(bytes.as_ptr(), aligned.as_mut_ptr().cast::<u8>(), total);
+434 | |     }
+    | |_____^
+
+error: usage of an `unsafe` block
+   --> CWG_GitHub\src\..\..\CWG_State\tests\support\windows_fixture.rs:444:8
+    |
+444 |       if unsafe {
+    |  ________^
+445 | |         DeviceIoControl(
+446 | |             file.as_raw_handle(),
+447 | |             0x0009_00a4,
+...   |
+455 | |     } == 0
+    | |_____^
+
+error: could not compile `cwg-github` (lib test) due to 23 previous errors
+warning: build failed, waiting for other jobs to finish...
+
+error: null

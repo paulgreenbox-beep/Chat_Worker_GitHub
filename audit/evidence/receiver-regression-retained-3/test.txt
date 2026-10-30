@@ -1,0 +1,41 @@
+command: cargo test -p cwg-state --test retained_access --locked --offline security_regression_ -- --nocapture
+CARGO_NET_OFFLINE=true
+exit_code: 101
+stdout:
+
+running 2 tests
+test security_regression_writable_mapping_journal_is_refused_after_writer_closes ... FAILED
+test security_regression_prior_writer_config_is_refused_after_acl_tightening ... FAILED
+
+failures:
+
+failures:
+    security_regression_prior_writer_config_is_refused_after_acl_tightening
+    security_regression_writable_mapping_journal_is_refused_after_writer_closes
+
+test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+stderr:
+warning: unused import: `path::Path`
+  --> CWG_Security\src\windows_acl.rs:10:21
+   |
+10 | use std::{fs::File, path::Path};
+   |                     ^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: `cwg-security` (lib) generated 1 warning (run `cargo fix --lib -p cwg-security` to apply 1 suggestion)
+   Compiling cwg-state v0.1.0 (<workspace>\CWG_State)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.45s
+     Running tests\retained_access.rs (target\debug\deps\retained_access-8b5def9723d19ad1.exe)
+
+thread 'security_regression_prior_writer_config_is_refused_after_acl_tightening' (10396) panicked at CWG_State\tests\retained_access.rs:19:5:
+private DACL alone must not admit a previously granted data writer
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+thread 'security_regression_writable_mapping_journal_is_refused_after_writer_closes' (31748) panicked at CWG_State\tests\retained_access.rs:33:5:
+a live writable mapping retains write authority after its original file handle closes
+error: test failed, to rerun pass `-p cwg-state --test retained_access`
+
+error: null

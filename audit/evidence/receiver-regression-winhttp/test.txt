@@ -1,0 +1,57 @@
+command: cargo test -p cwg-github --bin cwg-github --locked --offline audit_ -- --nocapture
+CARGO_NET_OFFLINE=true
+exit_code: 101
+stdout:
+
+running 11 tests
+test windows::tests::audit_connect_attempt_policy_is_single_attempt ... FAILED
+test windows::tests::audit_explicit_modern_tls_policy_is_required ... FAILED
+test windows::tests::audit_failed_native_close_is_not_reported_as_success ... FAILED
+test windows::tests::audit_invalid_path_or_deadline_opens_no_handle ... ok
+test windows::tests::audit_native_session_policy_is_observable ... FAILED
+test windows::tests::audit_native_loopback_get_has_no_credentials_and_closes_owned_handles ... ok
+test windows::tests::audit_native_redirect_is_refused_without_following_location ... ok
+test windows::tests::audit_native_truncated_response_is_not_accepted ... FAILED
+test windows::tests::audit_native_response_limit_fails_closed_and_closes_handles ... ok
+test windows::tests::audit_native_denied_status_and_auth_challenge_do_not_authorize ... ok
+test windows::tests::audit_native_timeout_refuses_and_releases_owned_handles ... ok
+
+failures:
+
+failures:
+    windows::tests::audit_connect_attempt_policy_is_single_attempt
+    windows::tests::audit_explicit_modern_tls_policy_is_required
+    windows::tests::audit_failed_native_close_is_not_reported_as_success
+    windows::tests::audit_native_session_policy_is_observable
+    windows::tests::audit_native_truncated_response_is_not_accepted
+
+test result: FAILED. 6 passed; 5 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.27s
+
+
+stderr:
+   Compiling cwg-github v0.1.0 (<workspace>\CWG_GitHub)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.02s
+     Running unittests src\main.rs (target\debug\deps\cwg_github-1a596084389f4186.exe)
+
+thread 'windows::tests::audit_connect_attempt_policy_is_single_attempt' (17320) panicked at CWG_GitHub\src\windows.rs:191:119:
+explicit connection-attempt limit required
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+thread 'windows::tests::audit_explicit_modern_tls_policy_is_required' (18524) panicked at CWG_GitHub\src\windows.rs:187:119:
+explicit TLS protocol policy required
+
+thread 'windows::tests::audit_failed_native_close_is_not_reported_as_success' (32736) panicked at CWG_GitHub\src\windows.rs:195:9:
+assertion `left == right` failed
+  left: Ok(())
+ right: Err("GITHUB_CLEANUP_UNKNOWN")
+
+thread 'windows::tests::audit_native_session_policy_is_observable' (30832) panicked at CWG_GitHub\src\windows.rs:206:13:
+assertion `left == right` failed
+  left: 5
+ right: 1
+
+thread 'windows::tests::audit_native_truncated_response_is_not_accepted' (33988) panicked at CWG_GitHub\src\windows.rs:242:9:
+truncated transfer accepted
+error: test failed, to rerun pass `-p cwg-github --bin cwg-github`
+
+error: null
