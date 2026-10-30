@@ -3,6 +3,7 @@
 use cwg_state::Binding;
 use serde::{Deserialize, Serialize};
 use std::{
+    collections::BTreeSet,
     fs::{self, OpenOptions},
     io::{Read, Write},
     path::Path,
@@ -135,6 +136,8 @@ pub(crate) fn append(
         return Err("REPORT_CORRUPT");
     }
     let mut count = 0usize;
+    let mut seen = BTreeSet::new();
+    let mut duplicate = false;
     for row in existing.split_inclusive(|b| *b == b'\n') {
         if row.len() > MAX_RECORD {
             return Err("REPORT_CORRUPT");
@@ -143,18 +146,23 @@ pub(crate) fn append(
             .map_err(|_| "REPORT_CORRUPT")?;
         validate(&record).map_err(|_| "REPORT_CORRUPT")?;
         count += 1;
-        if record.binding_id == proposed.binding_id && record.report_id == proposed.report_id {
-            return if record.repository_id == proposed.repository_id
-                && record.generation == proposed.generation
-                && record.message_id == proposed.message_id
-                && record.kind == proposed.kind
-                && record.body == proposed.body
-            {
-                Ok(false)
-            } else {
-                Err("REPORT_ID_CONFLICT")
-            };
+        if !seen.insert((record.binding_id.clone(), record.report_id.clone())) {
+            return Err("REPORT_DUPLICATE_JOURNAL_ENTRY");
         }
+        if record.binding_id == proposed.binding_id && record.report_id == proposed.report_id {
+            if record.repository_id != proposed.repository_id
+                || record.generation != proposed.generation
+                || record.message_id != proposed.message_id
+                || record.kind != proposed.kind
+                || record.body != proposed.body
+            {
+                return Err("REPORT_ID_CONFLICT");
+            }
+            duplicate = true;
+        }
+    }
+    if duplicate {
+        return Ok(false);
     }
     if count >= MAX_REPORTS {
         return Err("REPORT_CAPACITY");
