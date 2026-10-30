@@ -151,12 +151,12 @@ fn ancestor_allows_unrelated_creation_but_refuses_delete_child_rights() {
     fs::create_dir(&parent).unwrap();
     fs::create_dir(&root).unwrap();
     windows_fixture::set_fixture_acl(&root, None).unwrap();
-    windows_fixture::set_fixture_acl(&parent, Some(FixtureGrant::EveryoneCreateOnly)).unwrap();
+    windows_fixture::set_fixture_acl(&parent, Some(FixtureGrant::CreateOnly)).unwrap();
     drop(
         open_private_journal(&root)
             .expect("adding an unrelated child does not replace pinned existing entries"),
     );
-    windows_fixture::set_fixture_acl(&parent, Some(FixtureGrant::EveryoneDeleteChild)).unwrap();
+    windows_fixture::set_fixture_acl(&parent, Some(FixtureGrant::DeleteChild)).unwrap();
     assert_eq!(
         open_private_journal(&root).err(),
         Some("ACL_UNTRUSTED_ACCESS")
@@ -169,7 +169,7 @@ fn actual_world_read_grant_on_config_is_refused() {
     let temp = Temp::new();
     let path = temp.0.join("config.json");
     fs::write(&path, b"synthetic private binding config").unwrap();
-    windows_fixture::set_fixture_acl(&path, Some(FixtureGrant::EveryoneRead)).unwrap();
+    windows_fixture::set_fixture_acl(&path, Some(FixtureGrant::Read)).unwrap();
     assert_eq!(
         read_private_config(&path, 128).err(),
         Some("ACL_UNTRUSTED_ACCESS")

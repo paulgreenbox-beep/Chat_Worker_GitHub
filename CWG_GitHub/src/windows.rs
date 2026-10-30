@@ -595,6 +595,17 @@ mod tests {
         assert_eq!(outcome.stats.unknown, 0);
     }
     #[test]
+    fn audit_sessions_refuse_global_connection_pooling() {
+        assert_eq!(
+            session_options()
+                .iter()
+                .find(|(option, _)| *option == 195)
+                .map(|(_, value)| *value),
+            Some(1),
+            "each owned session must explicitly refuse cross-session connection pooling"
+        );
+    }
+    #[test]
     fn audit_fixture_refuses_an_interrupted_http_request_without_a_success_response() {
         use std::net::TcpStream;
         let (address, capture, worker) = server(response("200 OK", b"{}", ""), Duration::ZERO);

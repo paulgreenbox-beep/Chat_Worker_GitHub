@@ -24,10 +24,10 @@ static NONCE: AtomicU64 = AtomicU64::new(0);
 #[derive(Clone, Copy)]
 #[allow(dead_code)] // Each independent test target imports the shared fixture modes.
 pub enum FixtureGrant {
-    EveryoneRead,
-    EveryoneFull,
-    EveryoneCreateOnly,
-    EveryoneDeleteChild,
+    Read,
+    Full,
+    CreateOnly,
+    DeleteChild,
 }
 
 pub fn private_temp_dir(label: &str) -> PathBuf {
@@ -280,10 +280,10 @@ fn native_acl(path: &Path, grant: Option<FixtureGrant>) -> io::Result<()> {
     );
     if let Some(grant) = grant {
         let rights = match grant {
-            FixtureGrant::EveryoneRead => "FR",
-            FixtureGrant::EveryoneFull => "FA",
-            FixtureGrant::EveryoneCreateOnly => "0x00000006",
-            FixtureGrant::EveryoneDeleteChild => "0x00000040",
+            FixtureGrant::Read => "FR",
+            FixtureGrant::Full => "FA",
+            FixtureGrant::CreateOnly => "0x00000006",
+            FixtureGrant::DeleteChild => "0x00000040",
         };
         sddl.push_str(&format!("(A;{inheritance};{rights};;;WD)"));
     }
@@ -360,7 +360,7 @@ impl WritableMapping {
     #[allow(dead_code)]
     pub fn new(path: &Path) -> io::Result<Self> {
         // Enforce the same owned-root/reparse fence before touching a mapping.
-        set_fixture_acl(path, Some(FixtureGrant::EveryoneFull))?;
+        set_fixture_acl(path, Some(FixtureGrant::Full))?;
         let file = OpenOptions::new()
             .read(true)
             .write(true)

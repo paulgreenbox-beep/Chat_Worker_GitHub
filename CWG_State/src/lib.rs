@@ -527,6 +527,35 @@ fn commit_bytes(io: &mut impl CommitIo, bytes: Option<&[u8]>) -> Result<()> {
     io.synchronize().map_err(|_| "STATE_COMMIT_UNKNOWN")
 }
 
+fn no_links(path: &Path) -> Result<()> {
+    for p in path.ancestors() {
+        match fs::symlink_metadata(p) {
+            Ok(m) => {
+                if m.file_type().is_symlink() {
+                    return Err("STATE_LINK_REFUSED");
+                }
+                #[cfg(windows)]
+                {
+                    use std::os::windows::fs::MetadataExt;
+                    if m.file_attributes() & 0x400 != 0 {
+                        return Err("STATE_REPARSE_REFUSED");
+                    }
+                }
+                #[cfg(unix)]
+                {
+                    use std::os::unix::fs::MetadataExt;
+                    if m.is_file() && m.nlink() != 1 {
+                        return Err("STATE_HARDLINK_REFUSED");
+                    }
+                }
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound && p == path => {}
+            Err(_) => return Err("STATE_PATH_INVALID"),
+        }
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod commit_tests {
     use super::*;
@@ -602,32 +631,4 @@ mod commit_tests {
         assert_eq!(io.append_calls, 0);
         assert_eq!(io.sync_calls, 1);
     }
-}
-fn no_links(path: &Path) -> Result<()> {
-    for p in path.ancestors() {
-        match fs::symlink_metadata(p) {
-            Ok(m) => {
-                if m.file_type().is_symlink() {
-                    return Err("STATE_LINK_REFUSED");
-                }
-                #[cfg(windows)]
-                {
-                    use std::os::windows::fs::MetadataExt;
-                    if m.file_attributes() & 0x400 != 0 {
-                        return Err("STATE_REPARSE_REFUSED");
-                    }
-                }
-                #[cfg(unix)]
-                {
-                    use std::os::unix::fs::MetadataExt;
-                    if m.is_file() && m.nlink() != 1 {
-                        return Err("STATE_HARDLINK_REFUSED");
-                    }
-                }
-            }
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound && p == path => {}
-            Err(_) => return Err("STATE_PATH_INVALID"),
-        }
-    }
-    Ok(())
 }

@@ -321,7 +321,7 @@ fn native_owner_config_refuses_corruption_unprotected_acl_and_alias_paths() {
     assert!(config_from_file(&root.join("missing.json")).is_err());
     let alternate = PathBuf::from(format!("{}:alternate", path.display()));
     assert!(config_from_file(&alternate).is_err());
-    set_fixture_acl(&path, Some(FixtureGrant::EveryoneRead)).unwrap();
+    set_fixture_acl(&path, Some(FixtureGrant::Read)).unwrap();
     assert!(
         config_from_file(&path).is_err(),
         "readable-by-other-users owner config must be refused"

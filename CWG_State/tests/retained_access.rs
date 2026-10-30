@@ -27,7 +27,7 @@ fn security_regression_prior_writer_config_is_refused_after_acl_tightening() {
     let temp = Temp::new();
     let path = temp.0.join("config.json");
     fs::write(&path, b"synthetic configuration").unwrap();
-    windows_fixture::set_fixture_acl(&path, Some(FixtureGrant::EveryoneFull)).unwrap();
+    windows_fixture::set_fixture_acl(&path, Some(FixtureGrant::Full)).unwrap();
     let writer = OpenOptions::new()
         .read(true)
         .write(true)

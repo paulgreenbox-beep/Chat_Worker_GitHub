@@ -70,7 +70,7 @@ fn wait_for_parent() -> Result<(), &'static str> {
     std::io::stdin()
         .read_exact(&mut token)
         .map_err(|_| "FIXTURE_STDIN")?;
-    if token != [b'g'] {
+    if token != *b"g" {
         return Err("FIXTURE_START");
     }
     Ok(())
