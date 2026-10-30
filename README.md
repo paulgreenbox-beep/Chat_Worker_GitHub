@@ -39,7 +39,7 @@ See [architecture map](doc/maps.md), [delivery protocol](doc/protocol.md), [migr
 
 ## Current implementation
 
-The Rust source provides validated typed protocols and an in-memory routing/queue model. Typed deserialization rejects invalid fields, unknown fields and duplicate fields when decoding raw JSON directly. Router registration shares protocol validation; repository names are compared without ASCII case, while provider/thread/GOAL identities remain exact. Delivery transitions follow the documented state machine.
+The Rust source provides validated typed protocols and an in-memory routing/queue model. `Message::from_json_slice` bounds a raw JSON document before parsing; all three wire models require JSON objects and reject invalid, unknown and duplicate fields. Router uses explicit repository/GOAL/target/message keys for state operations, finite admission budgets and one-way binding suspension. Repository names are compared without ASCII case, while provider/thread/GOAL identities remain exact. Delivery transitions follow the documented state machine.
 
 Network webhook listener, GitHub authentication/actor authorization, persistent database, MCP transport, Codex App Server connection, native check execution and actual delivery are **NOT_IMPLEMENTED**. Router methods require a trusted external controller; accepting a syntactically valid ID does not authenticate its owner. Logical routing tests do not establish Codex thread isolation.
 
@@ -54,4 +54,4 @@ cargo build --workspace
 cargo build --workspace --release
 ```
 
-See [verification matrix](doc/testing.md) and [audit report](audit/REPORT.md) for executed commands, exact checked revisions and limitations. `Cargo.lock` is committed for repeatable workspace dependency selection. Reproduce with the recorded Rust/Cargo versions; an MSRV, other operating systems and bit-for-bit binary reproducibility have not been verified. Use `--locked --offline` once the locked dependencies are locally cached.
+See [verification matrix](doc/testing.md), [security follow-up](audit/SECURITY_REVIEW.md) and [historical first-pass audit](audit/REPORT.md) for executed commands, exact checked revisions and limitations. `Cargo.lock` is committed for repeatable workspace dependency selection. Reproduce with the recorded Rust/Cargo versions; an MSRV, other operating systems and bit-for-bit binary reproducibility have not been verified. Use `--locked --offline` once the locked dependencies are locally cached.

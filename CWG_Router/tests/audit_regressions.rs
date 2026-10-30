@@ -1,5 +1,5 @@
 use cwg_protocol::{ChatTarget, DeliveryStatus, GithubSource, Message};
-use cwg_router::{BindingKey, Router, RoutingError};
+use cwg_router::{BindingKey, MessageKey, Router, RoutingError};
 
 fn message() -> Message {
     Message {
@@ -20,6 +20,12 @@ fn message() -> Message {
     }
 }
 
+fn key(id: &str) -> MessageKey {
+    let mut message = message();
+    message.message_id = id.into();
+    MessageKey::from(&message)
+}
+
 #[test]
 fn refuses_acknowledgement_before_provider_acceptance() {
     let mut router = Router::default();
@@ -34,12 +40,12 @@ fn refuses_acknowledgement_before_provider_acceptance() {
         )
         .unwrap();
     router.enqueue_verified(m).unwrap();
-    router.begin_delivery("m1").unwrap();
+    router.begin_delivery(&key("m1")).unwrap();
     assert_eq!(
-        router.acknowledge("m1"),
+        router.acknowledge(&key("m1")),
         Err(RoutingError::StaleOrWrongState)
     );
-    assert_eq!(router.state("m1"), Some(DeliveryStatus::Delivering));
+    assert_eq!(router.state(&key("m1")), Some(DeliveryStatus::Delivering));
 }
 
 #[test]

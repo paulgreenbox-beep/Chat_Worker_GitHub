@@ -1,26 +1,30 @@
 //! Versioned CWG data contracts. No transport or execution permissions.
 #![forbid(unsafe_code)]
+use serde::de::{self, MapAccess, Visitor, value::MapAccessDeserializer};
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use std::marker::PhantomData;
 
 pub const MAX_BODY_BYTES: usize = 65_536;
+/// Upper bound checked before the raw JSON parser allocates decoded strings.
+pub const MAX_JSON_BYTES: usize = 400 * 1024;
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(try_from = "UncheckedTarget")]
+#[serde(try_from = "Object<UncheckedTarget>")]
 pub struct ChatTarget {
     pub provider: String,
     pub thread_id: String,
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(try_from = "UncheckedSource")]
+#[serde(try_from = "Object<UncheckedSource>")]
 pub struct GithubSource {
     pub repository: String,
     pub issue_number: u64,
     pub comment_id: u64,
     pub author_id: u64,
 }
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(try_from = "UncheckedMessage")]
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(try_from = "Object<UncheckedMessage>")]
 pub struct Message {
     pub schema: String,
     pub message_id: String,
@@ -28,6 +32,57 @@ pub struct Message {
     pub target: ChatTarget,
     pub goal_id: String,
     pub body: String,
+}
+
+impl fmt::Debug for Message {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("Message")
+            .field("schema", &self.schema)
+            .field("message_id", &self.message_id)
+            .field("source", &self.source)
+            .field("target", &self.target)
+            .field("goal_id", &self.goal_id)
+            .field("body_bytes", &self.body.len())
+            .finish()
+    }
+}
+
+/// A safe-to-log classification of failure at the bounded JSON entry point.
+/// The parser's source error is deliberately not retained because it may quote input.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum MessageParseError {
+    TooLarge,
+    InvalidJson { line: usize, column: usize },
+}
+
+impl fmt::Display for MessageParseError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::TooLarge => formatter.write_str("CWG JSON exceeds the raw byte limit"),
+            Self::InvalidJson { line, column } => {
+                write!(
+                    formatter,
+                    "invalid CWG JSON at line {line}, column {column}"
+                )
+            }
+        }
+    }
+}
+impl std::error::Error for MessageParseError {}
+
+impl Message {
+    /// Decode one complete JSON object after enforcing its raw byte budget.
+    /// This is a protocol parser, not an authenticated receiver or an authorization check.
+    pub fn from_json_slice(raw: &[u8]) -> Result<Self, MessageParseError> {
+        if raw.len() > MAX_JSON_BYTES {
+            return Err(MessageParseError::TooLarge);
+        }
+        serde_json::from_slice(raw).map_err(|error| MessageParseError::InvalidJson {
+            line: error.line(),
+            column: error.column(),
+        })
+    }
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -167,17 +222,80 @@ pub fn validate(message: &Message) -> Result<(), InvalidMessage> {
     )
 }
 
+// Serde's default struct decoder also accepts positional sequences. CWG wire
+// models require named objects, so only map access reaches the derived strict
+// field visitors. MapAccessDeserializer preserves duplicate-field detection.
+struct Object<T>(T);
+
+impl<'de, T: Deserialize<'de>> Deserialize<'de> for Object<T> {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        struct ObjectVisitor<T>(PhantomData<T>);
+
+        impl<'de, T: Deserialize<'de>> Visitor<'de> for ObjectVisitor<T> {
+            type Value = Object<T>;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+                formatter.write_str("a named CWG JSON object")
+            }
+
+            fn visit_map<A: MapAccess<'de>>(self, access: A) -> Result<Self::Value, A::Error> {
+                T::deserialize(MapAccessDeserializer::new(access)).map(Object)
+            }
+        }
+
+        deserializer.deserialize_map(ObjectVisitor(PhantomData))
+    }
+}
+
+// Check decoded byte lengths before this visitor copies borrowed/scratch strings.
+// A generic parser may allocate escaped-string scratch before visiting; only
+// from_json_slice enforces the overall raw byte budget before parsing begins.
+fn bounded_string<'de, const MAX: usize, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> Result<String, D::Error> {
+    struct BoundedStringVisitor<const MAX: usize>;
+
+    impl<'de, const MAX: usize> Visitor<'de> for BoundedStringVisitor<MAX> {
+        type Value = String;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+            write!(formatter, "a string of at most {MAX} UTF-8 bytes")
+        }
+
+        fn visit_str<E: de::Error>(self, value: &str) -> Result<Self::Value, E> {
+            if value.len() > MAX {
+                return Err(E::custom("CWG string exceeds its decoded byte limit"));
+            }
+            Ok(value.to_owned())
+        }
+
+        fn visit_borrowed_str<E: de::Error>(self, value: &'de str) -> Result<Self::Value, E> {
+            self.visit_str(value)
+        }
+
+        fn visit_string<E: de::Error>(self, value: String) -> Result<Self::Value, E> {
+            if value.len() > MAX {
+                return Err(E::custom("CWG string exceeds its decoded byte limit"));
+            }
+            Ok(value)
+        }
+    }
+
+    deserializer.deserialize_str(BoundedStringVisitor::<MAX>)
+}
+
 // Keep wire decoding strict and validate before exposing a public model.
-// Parsing directly from raw JSON also preserves duplicate-field detection.
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct UncheckedTarget {
+    #[serde(deserialize_with = "bounded_string::<32, _>")]
     provider: String,
+    #[serde(deserialize_with = "bounded_string::<128, _>")]
     thread_id: String,
 }
-impl TryFrom<UncheckedTarget> for ChatTarget {
+impl TryFrom<Object<UncheckedTarget>> for ChatTarget {
     type Error = InvalidMessage;
-    fn try_from(raw: UncheckedTarget) -> Result<Self, Self::Error> {
+    fn try_from(Object(raw): Object<UncheckedTarget>) -> Result<Self, Self::Error> {
         let target = Self {
             provider: raw.provider,
             thread_id: raw.thread_id,
@@ -190,14 +308,15 @@ impl TryFrom<UncheckedTarget> for ChatTarget {
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct UncheckedSource {
+    #[serde(deserialize_with = "bounded_string::<140, _>")]
     repository: String,
     issue_number: u64,
     comment_id: u64,
     author_id: u64,
 }
-impl TryFrom<UncheckedSource> for GithubSource {
+impl TryFrom<Object<UncheckedSource>> for GithubSource {
     type Error = InvalidMessage;
-    fn try_from(raw: UncheckedSource) -> Result<Self, Self::Error> {
+    fn try_from(Object(raw): Object<UncheckedSource>) -> Result<Self, Self::Error> {
         let source = Self {
             repository: raw.repository,
             issue_number: raw.issue_number,
@@ -212,16 +331,20 @@ impl TryFrom<UncheckedSource> for GithubSource {
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct UncheckedMessage {
+    #[serde(deserialize_with = "bounded_string::<14, _>")]
     schema: String,
+    #[serde(deserialize_with = "bounded_string::<128, _>")]
     message_id: String,
     source: GithubSource,
     target: ChatTarget,
+    #[serde(deserialize_with = "bounded_string::<36, _>")]
     goal_id: String,
+    #[serde(deserialize_with = "bounded_string::<MAX_BODY_BYTES, _>")]
     body: String,
 }
-impl TryFrom<UncheckedMessage> for Message {
+impl TryFrom<Object<UncheckedMessage>> for Message {
     type Error = InvalidMessage;
-    fn try_from(raw: UncheckedMessage) -> Result<Self, Self::Error> {
+    fn try_from(Object(raw): Object<UncheckedMessage>) -> Result<Self, Self::Error> {
         let message = Self {
             schema: raw.schema,
             message_id: raw.message_id,
