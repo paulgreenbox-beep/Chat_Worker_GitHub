@@ -8,3 +8,5 @@ Cargo.lock text eol=lf
 *.md text eol=lf
 # Preserve the exact published bytes covered by evidence SHA-256 hashes.
 audit/evidence/** -text
+# Native platform transcripts keep CRLF; other whitespace checks still apply.
+audit/evidence/foundation-extra*/platform.txt whitespace=cr-at-eol
