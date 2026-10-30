@@ -2,10 +2,6 @@ use super::*;
 use serde_json::{Value, json};
 use std::cell::RefCell;
 
-#[cfg(windows)]
-#[path = "../../CWG_State/tests/support/windows_fixture.rs"]
-mod windows_fixture;
-
 const FIXTURE: &[u8] = include_bytes!("../tests/fixtures/created.json");
 struct Api {
     values: std::collections::BTreeMap<String, Vec<u8>>,
@@ -467,10 +463,68 @@ fn audit_each_api_error_propagates_without_authorization_fallback() {
     }
 }
 #[cfg(windows)]
+fn private_ingress_fixture() -> std::path::PathBuf {
+    use std::{
+        path::PathBuf,
+        process::Command,
+        time::{SystemTime, UNIX_EPOCH},
+    };
+    let system_directory =
+        PathBuf::from(std::env::var_os("SystemRoot").expect("Windows root")).join("System32");
+    assert!(system_directory.is_absolute());
+    let identity = Command::new(system_directory.join("whoami.exe"))
+        .args(["/user", "/fo", "csv", "/nh"])
+        .output()
+        .expect("query owned fixture identity");
+    assert!(
+        identity.status.success(),
+        "query owned fixture identity failed"
+    );
+    // Parse only the ASCII SID column; the display name may use a local codepage.
+    let field = identity.stdout.rsplit(|byte| *byte == b',').next().unwrap();
+    let field = std::str::from_utf8(field).expect("ASCII SID column").trim();
+    let sid = field
+        .strip_prefix('"')
+        .and_then(|value| value.strip_suffix('"'))
+        .expect("quoted SID column");
+    let components: Vec<&str> = sid.split('-').collect();
+    assert!((4..=18).contains(&components.len()));
+    assert_eq!(&components[..2], ["S", "1"]);
+    assert!(
+        components[2..].iter().all(|part| !part.is_empty()
+            && part.bytes().all(|byte| byte.is_ascii_digit())
+            && part.parse::<u32>().is_ok()),
+        "numeric Windows SID required"
+    );
+    let parent = std::env::var_os("CWG_NATIVE_FIXTURE_PARENT")
+        .map(PathBuf::from)
+        .unwrap_or_else(std::env::temp_dir);
+    assert!(parent.is_absolute());
+    let nonce = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+    let dir = parent.join(format!("cwg-ingress-{}-{nonce}", std::process::id()));
+    std::fs::create_dir(&dir).expect("create new owned ingress fixture");
+    // No shell or ancestor ACL mutation: only this newly created directory.
+    let protected = Command::new(system_directory.join("icacls.exe"))
+        .arg(&dir)
+        .args(["/inheritance:r", "/grant:r"])
+        .arg(format!("*{sid}:(OI)(CI)F"))
+        .args(["*S-1-5-18:(OI)(CI)F", "*S-1-5-32-544:(OI)(CI)F"])
+        .output()
+        .expect("protect owned ingress fixture");
+    assert!(
+        protected.status.success(),
+        "protect owned ingress fixture failed"
+    );
+    dir
+}
+#[cfg(windows)]
 #[test]
 fn signed_fixture_commits_once_and_bad_mac_never_reads_api() {
     let (mut cfg, api, _) = fixture();
-    let dir = windows_fixture::private_temp_dir("ingress");
+    let dir = private_ingress_fixture();
     cfg.state_directory = dir.clone();
     let store = Store::open(&dir).unwrap();
     store.register(&cfg.routes[0].binding).unwrap();
