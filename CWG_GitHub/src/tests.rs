@@ -89,6 +89,88 @@ fn change(api: &mut Api, path: &str, f: impl FnOnce(&mut Value)) {
     for s in ["", "2026-02-30T00:00:00Z", "2026-13-01T00:00:00Z", "2026-01-01T24:00:00Z"] { assert!(!github_time(s)); }
     assert!(github_time("2024-02-29T23:59:59Z"));
 }
+
+fn array_fields(value: &Value, fields: &[&str]) -> Value {
+    Value::Array(fields.iter().map(|field| value[*field].clone()).collect())
+}
+fn config_value(cfg: &Config) -> Value {
+    let routes: Vec<Value> = cfg.routes.iter().map(|route| json!({"binding":route.binding,"author_ids":route.author_ids,"not_before":route.not_before,"installation_id":route.installation_id})).collect();
+    json!({"schema":cfg.schema,"enabled":cfg.enabled,"listen":cfg.listen.to_string(),"state_directory":cfg.state_directory,"webhook_secret_env":cfg.webhook_secret_env,"github_token_env":cfg.github_token_env,"routes":routes})
+}
+#[test]
+fn audit_config_and_nested_routes_require_objects() {
+    let (cfg, _, _) = fixture(); let value = config_value(&cfg);
+    let array = array_fields(&value, &["schema","enabled","listen","state_directory","webhook_secret_env","github_token_env","routes"]);
+    assert!(Config::from_bytes(&serde_json::to_vec(&array).unwrap()).is_err(), "positional Config accepted");
+    let mut nested = value.clone();
+    nested["routes"][0] = array_fields(&value["routes"][0], &["binding","author_ids","not_before","installation_id"]);
+    assert!(Config::from_bytes(&serde_json::to_vec(&nested).unwrap()).is_err(), "positional Route accepted");
+}
+#[test]
+fn audit_event_and_every_nested_identity_require_objects() {
+    let original: Value = serde_json::from_slice(FIXTURE).unwrap();
+    let mut variants = vec![("Event", array_fields(&original, &["action","repository","issue","comment","sender","installation"]))];
+    for (field, fields) in [("repository", vec!["id","full_name","owner"]), ("issue", vec!["id","number","state","locked","pull_request"]),
+        ("comment", vec!["id","body","user","issue_url","created_at","updated_at"]), ("sender", vec!["id","login","type"]), ("installation", vec!["id"])] {
+        let mut value = original.clone(); value[field] = array_fields(&original[field], &fields); variants.push((field, value));
+    }
+    let mut owner = original.clone(); owner["repository"]["owner"] = array_fields(&original["repository"]["owner"], &["id","login","type"]); variants.push(("owner", owner));
+    let mut author = original.clone(); author["comment"]["user"] = array_fields(&original["comment"]["user"], &["id","login","type"]); variants.push(("comment.user", author));
+    for (name, value) in variants {
+        assert!(decode_model::<Event>(&serde_json::to_vec(&value).unwrap(), MAX_EVENT_BYTES).is_err(), "positional {name} accepted");
+    }
+}
+#[test]
+fn audit_api_typed_arrays_are_refused() {
+    let (cfg, mut api, event) = fixture();
+    let path = "/repos/owner/repo/collaborators/alice/permission";
+    change(&mut api, path, |value| *value = array_fields(value, &["permission","user"]));
+    assert_eq!(reconcile(&cfg, &api, &event).err(), Some("JSON_SCHEMA"));
+    let (cfg, mut api, event) = fixture();
+    change(&mut api, path, |value| value["user"] = array_fields(&value["user"], &["id","login","type"]));
+    assert_eq!(reconcile(&cfg, &api, &event).err(), Some("JSON_SCHEMA"));
+}
+macro_rules! api_rejection {
+    ($name:ident, $path:expr, $change:expr, $code:expr) => {
+        #[test] fn $name() {
+            let (cfg, mut api, event) = fixture(); change(&mut api, $path, $change);
+            assert_eq!(reconcile(&cfg, &api, &event).err(), Some($code));
+        }
+    };
+}
+api_rejection!(audit_api_repository_id, "/repos/owner/repo", |v| v["id"] = json!(11), "API_RECONCILIATION_FAILED");
+api_rejection!(audit_api_repository_owner, "/repos/owner/repo", |v| v["owner"]["id"] = json!(21), "API_RECONCILIATION_FAILED");
+api_rejection!(audit_api_repository_name, "/repos/owner/repo", |v| v["full_name"] = json!("other/repo"), "API_RECONCILIATION_FAILED");
+api_rejection!(audit_api_issue_id, "/repos/owner/repo/issues/1", |v| v["id"] = json!(51), "API_RECONCILIATION_FAILED");
+api_rejection!(audit_api_issue_number, "/repos/owner/repo/issues/1", |v| v["number"] = json!(2), "API_RECONCILIATION_FAILED");
+api_rejection!(audit_api_issue_closed, "/repos/owner/repo/issues/1", |v| v["state"] = json!("closed"), "API_RECONCILIATION_FAILED");
+api_rejection!(audit_api_issue_locked, "/repos/owner/repo/issues/1", |v| v["locked"] = json!(true), "API_RECONCILIATION_FAILED");
+api_rejection!(audit_api_issue_is_pr, "/repos/owner/repo/issues/1", |v| v["pull_request"] = json!({"url":"ignored"}), "API_RECONCILIATION_FAILED");
+api_rejection!(audit_api_comment_zero, "/repos/owner/repo/issues/comments/60", |v| v["id"] = json!(0), "API_RECONCILIATION_FAILED");
+api_rejection!(audit_api_comment_id, "/repos/owner/repo/issues/comments/60", |v| v["id"] = json!(61), "API_RECONCILIATION_FAILED");
+api_rejection!(audit_api_comment_author_id, "/repos/owner/repo/issues/comments/60", |v| v["user"]["id"] = json!(8), "API_RECONCILIATION_FAILED");
+api_rejection!(audit_api_comment_author_login, "/repos/owner/repo/issues/comments/60", |v| v["user"]["login"] = json!("mallory"), "API_RECONCILIATION_FAILED");
+api_rejection!(audit_api_comment_author_bot, "/repos/owner/repo/issues/comments/60", |v| v["user"]["type"] = json!("Bot"), "API_RECONCILIATION_FAILED");
+api_rejection!(audit_api_comment_issue_url, "/repos/owner/repo/issues/comments/60", |v| v["issue_url"] = json!("https://attacker.invalid/issues/1"), "API_RECONCILIATION_FAILED");
+api_rejection!(audit_api_comment_calendar, "/repos/owner/repo/issues/comments/60", |v| v["created_at"] = json!("2026-02-30T00:00:00Z"), "API_RECONCILIATION_FAILED");
+api_rejection!(audit_api_comment_edited, "/repos/owner/repo/issues/comments/60", |v| v["updated_at"] = json!("2026-10-30T12:00:01Z"), "API_RECONCILIATION_FAILED");
+api_rejection!(audit_api_comment_body, "/repos/owner/repo/issues/comments/60", |v| v["body"] = json!("changed"), "API_RECONCILIATION_FAILED");
+api_rejection!(audit_api_permission_none, "/repos/owner/repo/collaborators/alice/permission", |v| v["permission"] = json!("none"), "CURRENT_PERMISSION_DENIED");
+api_rejection!(audit_api_permission_read, "/repos/owner/repo/collaborators/alice/permission", |v| v["permission"] = json!("read"), "CURRENT_PERMISSION_DENIED");
+api_rejection!(audit_api_permission_triage, "/repos/owner/repo/collaborators/alice/permission", |v| v["permission"] = json!("triage"), "CURRENT_PERMISSION_DENIED");
+api_rejection!(audit_api_permission_unknown, "/repos/owner/repo/collaborators/alice/permission", |v| v["permission"] = json!("custom-role"), "CURRENT_PERMISSION_DENIED");
+api_rejection!(audit_api_permission_id, "/repos/owner/repo/collaborators/alice/permission", |v| v["user"]["id"] = json!(8), "CURRENT_PERMISSION_DENIED");
+api_rejection!(audit_api_permission_login, "/repos/owner/repo/collaborators/alice/permission", |v| v["user"]["login"] = json!("mallory"), "CURRENT_PERMISSION_DENIED");
+api_rejection!(audit_api_permission_bot, "/repos/owner/repo/collaborators/alice/permission", |v| v["user"]["type"] = json!("Bot"), "CURRENT_PERMISSION_DENIED");
+
+#[test]
+fn audit_each_api_error_propagates_without_authorization_fallback() {
+    for (index, path) in ["/repos/owner/repo", "/repos/owner/repo/issues/1", "/repos/owner/repo/issues/comments/60", "/repos/owner/repo/collaborators/alice/permission"].iter().enumerate() {
+        let (cfg, mut api, event) = fixture(); api.values.remove(*path);
+        assert_eq!(reconcile(&cfg, &api, &event).err(), Some("GITHUB_TEST_UNAVAILABLE"));
+        assert_eq!(api.calls.borrow().len(), index + 1);
+    }
+}
 #[cfg(windows)]
 #[test] fn signed_fixture_commits_once_and_bad_mac_never_reads_api() {
     use std::time::{SystemTime, UNIX_EPOCH};

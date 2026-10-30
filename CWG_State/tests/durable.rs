@@ -64,6 +64,45 @@ fn message(b: &Binding, comment: u64) -> Message {
     let t = Temp::new(); let b = binding(); let s = t.store(); s.register(&b).unwrap(); s.put_verified(&b, "a", message(&b, 1)).unwrap();
     assert!(s.put_verified(&b, "a", message(&b, 2)).is_err());
 }
+#[test] fn security_regression_new_delivery_alias_is_durable() {
+    let t = Temp::new(); let b = binding(); let s = t.store(); s.register(&b).unwrap();
+    assert!(s.put_verified(&b, "delivery-a", message(&b, 1)).unwrap());
+    assert!(!s.put_verified(&b, "delivery-b", message(&b, 1)).unwrap());
+    assert!(t.store().put_verified(&b, "delivery-b", message(&b, 2)).is_err(),
+        "a delivery ID already observed for comment 1 must not name comment 2 after restart");
+    assert_eq!(t.store().inbox(&b, 100).unwrap().len(), 1);
+}
+#[test] fn security_regression_delivery_alias_cannot_cross_sources() {
+    let t = Temp::new(); let b = binding(); let s = t.store(); s.register(&b).unwrap();
+    assert!(s.put_verified(&b, "delivery-a", message(&b, 1)).unwrap());
+    assert!(s.put_verified(&b, "delivery-b", message(&b, 2)).unwrap());
+    assert!(s.put_verified(&b, "delivery-b", message(&b, 1)).is_err(),
+        "canonical-message dedupe must not conceal delivery ID correlation to another source");
+    assert_eq!(s.inbox(&b, 100).unwrap().len(), 2);
+}
+#[test] fn security_regression_journal_record_requires_object() {
+    let t = Temp::new(); let b = binding(); t.store().register(&b).unwrap();
+    let path = t.0.join("inbox.jsonl");
+    let record: serde_json::Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+    let positional = serde_json::json!([record["schema"], record["sequence"], record["event"]]);
+    let mut raw = serde_json::to_vec(&positional).unwrap(); raw.push(b'\n'); fs::write(&path, &raw).unwrap();
+    assert!(t.store().inbox(&b, 1).is_err(), "a journal record must be a named-field object");
+    assert_eq!(fs::read(path).unwrap(), raw);
+}
+#[cfg(windows)]
+#[test] fn security_regression_state_root_requires_private_acl() {
+    let t = Temp::new();
+    // The fixture is this test's newly created, synthetic directory only. No
+    // shell, recursive grant, inherited host ACL or external path is modified.
+    let executable = PathBuf::from(std::env::var_os("SystemRoot").expect("Windows SystemRoot"))
+        .join("System32").join("icacls.exe");
+    let result = std::process::Command::new(executable)
+        .arg(&t.0).args(["/grant", "*S-1-1-0:(OI)(CI)(F)", "/Q"])
+        .output().expect("run existing Windows ACL utility for owned fixture");
+    assert!(result.status.success(), "owned fixture ACL setup must actually succeed");
+    assert!(Store::open(&t.0).is_err(),
+        "State must refuse an actual World-writable/readable root, not trust an operator-only comment");
+}
 #[test] fn sequence_corruption_is_rejected() {
     let t = Temp::new(); let b = binding(); t.store().register(&b).unwrap();
     let p = t.0.join("inbox.jsonl"); let raw = fs::read_to_string(&p).unwrap().replace("\"sequence\":1", "\"sequence\":2"); fs::write(p, raw).unwrap();

@@ -1,0 +1,9 @@
+{
+  "commands": [
+    "Get-CimInstance Win32_OperatingSystem | Select Caption,Version,OSArchitecture",
+    "Get-CimInstance Win32_ComputerSystem | Select Manufacturer,Model,HypervisorPresent"
+  ],
+  "machine": null,
+  "is64bit": true,
+  "os": null
+}

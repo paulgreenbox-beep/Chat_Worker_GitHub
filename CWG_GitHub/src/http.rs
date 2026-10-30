@@ -53,4 +53,50 @@ mod tests {
         for len in ["0", "+2", "-2", "999999999999999999999", "3"] { assert!(read_request(&mut &raw("", len, "{}")[..]).is_err()); }
     }
     #[test] fn header_newline_injection_refused() { assert!(read_request(&mut &raw("Bad: value\nInjected: yes\r\n", "2", "{}")[..]).is_err()); }
+
+    struct HeadersOnly { bytes: Vec<u8>, position: usize, body_attempted: bool }
+    impl HeadersOnly {
+        fn new(mut bytes: Vec<u8>) -> Self {
+            let end = bytes.windows(4).position(|part| part == b"\r\n\r\n").unwrap() + 4;
+            bytes.truncate(end);
+            Self { bytes, position: 0, body_attempted: false }
+        }
+    }
+    impl Read for HeadersOnly {
+        fn read(&mut self, out: &mut [u8]) -> std::io::Result<usize> {
+            if self.position == self.bytes.len() {
+                self.body_attempted = true;
+                return Err(std::io::Error::new(std::io::ErrorKind::PermissionDenied, "fixture forbids body read"));
+            }
+            let count = out.len().min(self.bytes.len() - self.position);
+            out[..count].copy_from_slice(&self.bytes[self.position..self.position + count]);
+            self.position += count;
+            Ok(count)
+        }
+    }
+    #[test]
+    fn http_security_regression_empty_host_is_rejected() {
+        let bytes = String::from_utf8(raw("", "2", "{}")).unwrap().replace("Host: localhost", "Host:");
+        assert!(read_request(&mut bytes.as_bytes()).is_err());
+    }
+    #[test]
+    fn http_security_regression_missing_signature_is_refused_before_body_read() {
+        let bytes = String::from_utf8(raw("", "2", "{}")).unwrap().replace("X-Hub-Signature-256: sha256=test\r\n", "");
+        let mut reader = HeadersOnly::new(bytes.into_bytes());
+        assert_eq!(read_request(&mut reader).err(), Some("HTTP_HEADER_MISSING"));
+        assert!(!reader.body_attempted);
+    }
+    #[test]
+    fn http_security_regression_unknown_event_is_refused_before_body_read() {
+        let bytes = String::from_utf8(raw("", "2", "{}")).unwrap().replace("X-GitHub-Event: issue_comment", "X-GitHub-Event: ping");
+        let mut reader = HeadersOnly::new(bytes.into_bytes());
+        assert_eq!(read_request(&mut reader).err(), Some("HTTP_EVENT_UNSUPPORTED"));
+        assert!(!reader.body_attempted);
+    }
+    #[test]
+    fn http_security_regression_bad_mac_shape_is_refused_before_body_read() {
+        let mut reader = HeadersOnly::new(raw("", "2", "{}"));
+        assert_eq!(read_request(&mut reader).err(), Some("HTTP_SIGNATURE_FORMAT"));
+        assert!(!reader.body_attempted);
+    }
 }

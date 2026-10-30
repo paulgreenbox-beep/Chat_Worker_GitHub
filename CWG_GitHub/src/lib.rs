@@ -6,6 +6,11 @@ use cwg_state::{Binding, Store};
 use serde::Deserialize;
 use std::{collections::BTreeSet, net::SocketAddr, path::PathBuf};
 
+// Private typed-boundary seam; generic security decoding remains format-neutral.
+fn decode_model<T: serde::de::DeserializeOwned>(bytes: &[u8], limit: usize) -> Result<T> {
+    decode(bytes, limit)
+}
+
 pub mod http;
 pub const MAX_EVENT_BYTES: usize = 512 * 1024;
 
@@ -31,7 +36,7 @@ pub struct Config {
 }
 impl Config {
     pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
-        let config: Self = decode(bytes, 65_536)?;
+        let config: Self = decode_model(bytes, 65_536)?;
         config.validate()?;
         Ok(config)
     }
@@ -100,7 +105,7 @@ impl<A: GithubApi> Ingress<'_, A> {
             return Err("EVENT_ENVELOPE_INVALID");
         }
         verify_signature(self.secret, raw, signature)?;
-        let event: Event = decode(raw, MAX_EVENT_BYTES)?;
+        let event: Event = decode_model(raw, MAX_EVENT_BYTES)?;
         let (binding, message) = reconcile(self.config, self.api, &event)?;
         self.store.put_verified(binding, delivery, message)
     }
@@ -129,9 +134,9 @@ fn reconcile<'a>(cfg: &'a Config, api: &impl GithubApi, event: &Event) -> Result
         return Err("ACTOR_OR_SOURCE_NOT_ALLOWED");
     }
     let base = format!("/repos/{}", b.repository);
-    let repo: Repository = decode(&api.get(&base)?, MAX_EVENT_BYTES)?;
-    let issue: Issue = decode(&api.get(&format!("{base}/issues/{}", b.issue_number))?, MAX_EVENT_BYTES)?;
-    let comment: Comment = decode(&api.get(&format!("{base}/issues/comments/{}", event.comment.id))?, MAX_EVENT_BYTES)?;
+    let repo: Repository = decode_model(&api.get(&base)?, MAX_EVENT_BYTES)?;
+    let issue: Issue = decode_model(&api.get(&format!("{base}/issues/{}", b.issue_number))?, MAX_EVENT_BYTES)?;
+    let comment: Comment = decode_model(&api.get(&format!("{base}/issues/comments/{}", event.comment.id))?, MAX_EVENT_BYTES)?;
     if !repo_matches(&repo, b) || !open_issue(&issue, b) || issue.id != event.issue.id
         || comment.id == 0 || comment.id != event.comment.id || !user_matches(&comment.user, &event.sender)
         || !comment.issue_url.eq_ignore_ascii_case(&format!("https://api.github.com{base}/issues/{}", b.issue_number))
@@ -141,7 +146,7 @@ fn reconcile<'a>(cfg: &'a Config, api: &impl GithubApi, event: &Event) -> Result
         || comment.updated_at != event.comment.updated_at || comment.body != event.comment.body {
         return Err("API_RECONCILIATION_FAILED");
     }
-    let permission: Permission = decode(&api.get(&format!("{base}/collaborators/{}/permission", comment.user.login))?, MAX_EVENT_BYTES)?;
+    let permission: Permission = decode_model(&api.get(&format!("{base}/collaborators/{}/permission", comment.user.login))?, MAX_EVENT_BYTES)?;
     if !user_matches(&permission.user, &comment.user) || !matches!(permission.permission.as_str(), "write" | "maintain" | "admin") {
         return Err("CURRENT_PERMISSION_DENIED");
     }

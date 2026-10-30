@@ -87,30 +87,11 @@ pub fn verify_signature(secret: &[u8], bytes: &[u8], header: &str) -> Result<()>
 fn hmac(_: &[u8], _: &[u8]) -> Result<[u8; 32]> { Err("WINDOWS_CNG_REQUIRED") }
 
 #[cfg(windows)]
+mod windows_cng;
+
+#[cfg(windows)]
 fn hmac(secret: &[u8], bytes: &[u8]) -> Result<[u8; 32]> {
-    use std::{ffi::c_void, ptr};
-    #[link(name = "bcrypt")]
-    unsafe extern "system" {
-        fn BCryptOpenAlgorithmProvider(handle: *mut *mut c_void, alg: *const u16, implementation: *const u16, flags: u32) -> i32;
-        fn BCryptHash(handle: *mut c_void, secret: *const u8, secret_len: u32, input: *const u8, input_len: u32, output: *mut u8, output_len: u32) -> i32;
-        fn BCryptCloseAlgorithmProvider(handle: *mut c_void, flags: u32) -> i32;
-    }
-    let key_len = u32::try_from(secret.len()).map_err(|_| "SECRET_SIZE")?;
-    let input_len = u32::try_from(bytes.len()).map_err(|_| "PAYLOAD_SIZE")?;
-    let algorithm: Vec<u16> = "SHA256\0".encode_utf16().collect();
-    let mut handle = ptr::null_mut();
-    let mut output = [0; 32];
-    // SAFETY: CNG receives live bounded buffers. Handle is closed on every
-    // path after successful creation. BCRYPT_ALG_HANDLE_HMAC_FLAG = 0x8.
-    unsafe {
-        if BCryptOpenAlgorithmProvider(&mut handle, algorithm.as_ptr(), ptr::null(), 8) < 0 {
-            return Err("CNG_OPEN_FAILED");
-        }
-        let status = BCryptHash(handle, secret.as_ptr(), key_len, bytes.as_ptr(), input_len, output.as_mut_ptr(), 32);
-        let closed = BCryptCloseAlgorithmProvider(handle, 0);
-        if status < 0 || closed < 0 { return Err("CNG_HASH_FAILED"); }
-    }
-    Ok(output)
+    windows_cng::hmac(secret, bytes)
 }
 
 #[cfg(test)]
