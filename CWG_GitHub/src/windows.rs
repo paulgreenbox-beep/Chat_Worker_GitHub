@@ -609,15 +609,26 @@ mod tests {
             assert_eq!(retries, 1);
             let mut protocols = 0u32;
             let mut size = 4;
-            ok(WinHttpQueryOption(
-                session,
-                OPTION_SECURE_PROTOCOLS,
-                (&mut protocols as *mut u32).cast(),
-                &mut size,
-            ))
-            .unwrap();
-            assert_ne!(protocols & TLS_1_2, 0);
-            assert_eq!(protocols & (0x8 | 0x20 | 0x80 | 0x200), 0);
+            // SECURE_PROTOCOLS is set-only in the documented WinHTTP option
+            // matrix. The native SetOption calls above must succeed; a query
+            // is not evidence of the negotiated production TLS protocol.
+            assert_eq!(
+                WinHttpQueryOption(
+                    session,
+                    OPTION_SECURE_PROTOCOLS,
+                    (&mut protocols as *mut u32).cast(),
+                    &mut size,
+                ),
+                0
+            );
+            assert_eq!(GetLastError(), 12009); // ERROR_WINHTTP_INVALID_OPTION
+            let requested = session_options()
+                .iter()
+                .find(|(option, _)| *option == OPTION_SECURE_PROTOCOLS)
+                .unwrap()
+                .1;
+            assert_ne!(requested & TLS_1_2, 0);
+            assert_eq!(requested & (0x8 | 0x20 | 0x80 | 0x200), 0);
         }
         let cleanup = handles.close_all();
         cleanup.result.unwrap();

@@ -32,8 +32,39 @@ impl Temp {
 }
 impl Drop for Temp {
     fn drop(&mut self) {
-        let _ = fs::remove_dir_all(&self.0);
+        fs::remove_dir_all(&self.0).expect("release only this owned synthetic State fixture");
+        assert!(!self.0.exists());
     }
+}
+#[test]
+fn journal_storage_and_record_limits_refuse_without_truncation() {
+    use std::io::Write;
+    let temp = Temp::new();
+    let binding = binding();
+    let store = temp.store();
+    let path = temp.0.join("inbox.jsonl");
+    let journal_limit = 32 * 1024 * 1024;
+    let file = fs::OpenOptions::new().write(true).open(&path).unwrap();
+    file.set_len(journal_limit + 1).unwrap();
+    file.sync_all().unwrap();
+    drop(file);
+    assert_eq!(
+        store.inbox(&binding, 1).err(),
+        Some("JOURNAL_CORRUPT_OR_TOO_LARGE")
+    );
+    assert_eq!(fs::metadata(&path).unwrap().len(), journal_limit + 1);
+    let mut raw = vec![b' '; 512 * 1024 + 1];
+    raw.push(b'\n');
+    let mut file = fs::OpenOptions::new()
+        .write(true)
+        .truncate(true)
+        .open(&path)
+        .unwrap();
+    file.write_all(&raw).unwrap();
+    file.sync_all().unwrap();
+    drop(file);
+    assert!(store.inbox(&binding, 1).is_err());
+    assert_eq!(fs::read(&path).unwrap(), raw);
 }
 fn binding() -> Binding {
     Binding {
