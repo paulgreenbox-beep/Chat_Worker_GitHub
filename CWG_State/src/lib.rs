@@ -145,16 +145,8 @@ pub struct Item {
     pub message: Message,
     pub status: DeliveryStatus,
 }
-#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum Transition {
-    Begin,
-    Accepted,
-    Unknown,
-    Acknowledge,
-    Complete,
-    Block,
-}
+mod transition;
+pub use transition::Transition;
 #[derive(Serialize, Deserialize)]
 #[serde(tag = "kind", deny_unknown_fields)]
 enum Event {
@@ -632,3 +624,6 @@ mod commit_tests {
         assert_eq!(io.sync_calls, 1);
     }
 }
+
+#[cfg(test)]
+mod journal_wire_tests;
