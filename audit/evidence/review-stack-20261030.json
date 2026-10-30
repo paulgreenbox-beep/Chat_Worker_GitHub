@@ -1,0 +1,35 @@
+{
+  "schema": "cwg-review-tooling-evidence-v1",
+  "date": "2026-10-30",
+  "scope": "Node/Git audit tooling executed against synthetic local repositories; not a Rust or Windows runtime receipt",
+  "environment": {
+    "os": "Linux",
+    "architecture": "x86_64",
+    "node": "v22.16.0",
+    "git": "git version 2.47.3",
+    "rust": "NOT_AVAILABLE"
+  },
+  "commands": [
+    {"command": "node --check audit/verify-stack.mjs", "status": "PASS", "exit_code": 0},
+    {"command": "node --check audit/stack.test.mjs", "status": "PASS", "exit_code": 0},
+    {"command": "node --test audit/stack.test.mjs", "status": "PASS", "exit_code": 0, "tests": 11, "passed": 11, "failed": 0, "skipped": 0}
+  ],
+  "inputs": [
+    {"path": "audit/stack.test.mjs", "bytes": 4818, "sha256": "6aad0d7c189ff0aefe34ac18645a2934ccacefc8f63ca16646613853d3ec5457", "git_blob_sha1": "e5937c20c2761f30faa6459083cfa8564e968578"},
+    {"path": "audit/verify-stack.mjs", "bytes": 3985, "sha256": "71a7dcb9778e0139897394ed6568cf7b9eff031a54df3ebf773060c00a81402b", "git_blob_sha1": "676624384303933ee7b1d6d6124c38727a5f4296"}
+  ],
+  "log_sha256": "5aa234cb53b0ab613c79dde8ecabb818a88715c40acad0fa1e6566d472a9df2e",
+  "rust_regressions": {"added": 14, "status": "NOT_RUN", "reason": "rustc and cargo absent; no Windows host available"},
+  "reviewed_heads": {
+    "pr1": "8bece841b4d7050b68ef8780056d5167d4158ed7",
+    "pr2": "a8ba353172126b56edf43ab66fb375ddf4486bcb",
+    "pr3": "7931b04a7e3d1d0e9fa43086cbf1df6819e64eeb"
+  },
+  "remote_ancestry": "GitHub comparison and branch source inspection, not a local clone/test; dependency stacks remain divergent",
+  "limits": [
+    "No live GitHub-to-Codex delivery",
+    "No OS isolation approval",
+    "No merge, installation, secret or workflow enablement",
+    "Remote HEADs may change; refresh and recheck before integration"
+  ]
+}
