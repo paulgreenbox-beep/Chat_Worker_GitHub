@@ -52,7 +52,9 @@ fn read_line(reader: &mut impl BufRead) -> io::Result<Option<Vec<u8>>> {
         }
         let newline = available.iter().position(|byte| *byte == b'\n');
         let count = newline.map_or(available.len(), |at| at + 1);
-        if data.len() + count > MAX_RPC_BYTES + 1 {
+        // Bound the wire frame including both CR and LF. The payload limit is
+        // checked after removing the terminator, so LF/CRLF have equal budgets.
+        if data.len().checked_add(count).is_none_or(|n| n > MAX_RPC_BYTES + 2) {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
                 "JSON-RPC frame too large",
@@ -64,6 +66,12 @@ fn read_line(reader: &mut impl BufRead) -> io::Result<Option<Vec<u8>>> {
             data.pop();
             if data.last() == Some(&b'\r') {
                 data.pop();
+            }
+            if data.len() > MAX_RPC_BYTES {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    "JSON-RPC payload too large",
+                ));
             }
             return Ok(Some(data));
         }
@@ -86,5 +94,32 @@ mod tests {
         let huge = vec![b'x'; MAX_RPC_BYTES + 2];
         let mut reader = BufReader::new(huge.as_slice());
         assert!(read_line(&mut reader).is_err());
+    }
+
+    #[test]
+    fn lf_and_split_crlf_have_the_same_exact_payload_limit() {
+        for ending in [b"\n".as_slice(), b"\r\n".as_slice()] {
+            let mut bytes = vec![b'x'; MAX_RPC_BYTES];
+            bytes.extend_from_slice(ending);
+            bytes.extend_from_slice(b"{}\n");
+            for capacity in [1, 7, 8192] {
+                let mut reader = BufReader::with_capacity(capacity, bytes.as_slice());
+                assert_eq!(read_line(&mut reader).unwrap().unwrap().len(), MAX_RPC_BYTES);
+                assert_eq!(read_line(&mut reader).unwrap(), Some(b"{}".to_vec()));
+                assert_eq!(read_line(&mut reader).unwrap(), None);
+            }
+        }
+    }
+
+    #[test]
+    fn terminator_allowance_does_not_expand_the_json_payload_budget() {
+        for ending in [b"\n".as_slice(), b"\r\n".as_slice()] {
+            let mut bytes = vec![b'x'; MAX_RPC_BYTES + 1];
+            bytes.extend_from_slice(ending);
+            for capacity in [1, 7, 8192] {
+                let mut reader = BufReader::with_capacity(capacity, bytes.as_slice());
+                assert_eq!(read_line(&mut reader).unwrap_err().kind(), io::ErrorKind::InvalidData);
+            }
+        }
     }
 }
