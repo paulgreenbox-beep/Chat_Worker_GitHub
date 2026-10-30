@@ -126,7 +126,10 @@ impl Server {
         }
         let params = obj.get("params");
         if is_notification {
-            if method == "notifications/initialized" && self.phase == Phase::LegacyAwaitInitialized {
+            if method == "notifications/initialized"
+                && self.phase == Phase::LegacyAwaitInitialized
+                && validate_empty_params(params).is_ok()
+            {
                 self.phase = Phase::LegacyReady;
             }
             // Never return replies to notifications, including unknown ones.
@@ -135,11 +138,11 @@ impl Server {
         let response = match method {
             "initialize" => self.initialize(params),
             "server/discover" => self.discover(params),
-            "ping" => {
-                self.check_phase(params).map(|_| json!({}))
-            }
-            "tools/list" => self.check_phase(params).and_then(|_| {
-                validate_list_params(params)?;
+            "ping" => validate_empty_params(params)
+                .and_then(|_| self.check_phase(params))
+                .map(|_| json!({})),
+            "tools/list" => validate_list_params(params).and_then(|_| {
+                self.check_phase(params)?;
                 Ok(json!({"tools": tools()}))
             }),
             "tools/call" => self.check_phase(params).and_then(|_| self.call_tool(params)),
@@ -147,6 +150,11 @@ impl Server {
         };
         match response {
             Ok(mut result) => {
+                // Adopt the stateless era only after a request is admitted.
+                // Malformed first requests must not poison later negotiation.
+                if self.phase == Phase::New {
+                    self.phase = Phase::Modern;
+                }
                 if self.phase == Phase::Modern {
                     if let Some(map) = result.as_object_mut() {
                         map.insert("resultType".into(), json!("complete"));
@@ -171,7 +179,8 @@ impl Server {
         let requested = obj.get("protocolVersion").and_then(Value::as_str)
             .ok_or((-32602, "PROTOCOL_VERSION_REQUIRED"))?;
         if !obj.get("capabilities").is_some_and(Value::is_object)
-            || !obj.get("clientInfo").is_some_and(Value::is_object)
+            || !obj.get("clientInfo").is_some_and(valid_client_info)
+            || obj.get("_meta").is_some_and(|meta| !meta.is_object())
         {
             return Err((-32602, "CLIENT_INFO_REQUIRED"));
         }
@@ -201,22 +210,19 @@ impl Server {
         }))
     }
 
-    fn check_phase(&mut self, params: Option<&Value>) -> Result<(), (i32, &'static str)> {
+    fn check_phase(&self, params: Option<&Value>) -> Result<(), (i32, &'static str)> {
         match self.phase {
-            Phase::Modern => modern_meta(params),
+            Phase::Modern | Phase::New => modern_meta(params),
             Phase::LegacyReady => Ok(()),
-            Phase::New => {
-                modern_meta(params)?;
-                self.phase = Phase::Modern;
-                Ok(())
-            }
             Phase::LegacyAwaitInitialized => Err((-32002, "INITIALIZATION_INCOMPLETE")),
         }
     }
 
     fn call_tool(&self, params: Option<&Value>) -> RpcResult {
         let obj = params.and_then(Value::as_object).ok_or((-32602, "INVALID_PARAMS"))?;
-        if obj.keys().any(|key| !matches!(key.as_str(), "name" | "arguments" | "_meta")) {
+        if obj.keys().any(|key| !matches!(key.as_str(), "name" | "arguments" | "_meta"))
+            || obj.get("_meta").is_some_and(|meta| !meta.is_object())
+        {
             return Err((-32602, "INVALID_TOOL_PARAMS"));
         }
         let name = obj.get("name").and_then(Value::as_str)
@@ -310,21 +316,46 @@ fn modern_meta(params: Option<&Value>) -> Result<(), (i32, &'static str)> {
         return Err((-32602, "UNSUPPORTED_PROTOCOL_VERSION_OR_CAPABILITIES"));
     }
     if let Some(info) = meta.get("io.modelcontextprotocol/clientInfo")
-        && !info.is_object()
+        && !valid_client_info(info)
     {
         return Err((-32602, "CLIENT_INFO_INVALID"));
     }
     Ok(())
 }
 
+fn valid_client_info(value: &Value) -> bool {
+    value.as_object().is_some_and(|info| {
+        info.get("name").is_some_and(Value::is_string)
+            && info.get("version").is_some_and(Value::is_string)
+    })
+}
+
+// Omitted params and an object are different from explicit null/arrays/scalars.
+// Metadata is extensible, but its container must still be an object.
+fn validate_empty_params(params: Option<&Value>) -> Result<(), (i32, &'static str)> {
+    let Some(value) = params else { return Ok(()); };
+    let obj = value.as_object().ok_or((-32602, "INVALID_PARAMS"))?;
+    if obj.keys().any(|key| key != "_meta")
+        || obj.get("_meta").is_some_and(|meta| !meta.is_object())
+    {
+        return Err((-32602, "INVALID_PARAMS"));
+    }
+    Ok(())
+}
+
 fn validate_list_params(params: Option<&Value>) -> Result<(), (i32, &'static str)> {
-    if let Some(obj) = params.and_then(Value::as_object) {
-        if obj.keys().any(|key| !matches!(key.as_str(), "_meta" | "cursor")) {
+    let Some(value) = params else { return Ok(()); };
+    let obj = value.as_object().ok_or((-32602, "INVALID_LIST_PARAMS"))?;
+    if obj.keys().any(|key| !matches!(key.as_str(), "_meta" | "cursor"))
+        || obj.get("_meta").is_some_and(|meta| !meta.is_object())
+    {
+        return Err((-32602, "INVALID_LIST_PARAMS"));
+    }
+    if let Some(cursor) = obj.get("cursor") {
+        if !cursor.is_string() {
             return Err((-32602, "INVALID_LIST_PARAMS"));
         }
-        if obj.get("cursor").is_some_and(|cursor| !cursor.is_null()) {
-            return Err((-32602, "PAGINATION_UNSUPPORTED"));
-        }
+        return Err((-32602, "PAGINATION_UNSUPPORTED"));
     }
     Ok(())
 }
@@ -414,7 +445,7 @@ mod tests {
     use cwg_protocol::{ChatTarget, GithubSource, Message};
     use std::time::{SystemTime, UNIX_EPOCH};
 
-    fn setup() -> (Server, PathBuf) {
+    pub(super) fn setup() -> (Server, PathBuf) {
         let root = std::env::temp_dir().join(format!(
             "cwg-mcp-{}-{}",
             std::process::id(),
@@ -442,10 +473,10 @@ mod tests {
         (Server{binding,store,state_root:root.clone(),phase:Phase::New},root)
     }
 
-    fn send(s:&mut Server, v:Value)->Value {
+    pub(super) fn send(s:&mut Server, v:Value)->Value {
         s.handle_json(&serde_json::to_vec(&v).unwrap()).unwrap()
     }
-    fn init(s:&mut Server) {
+    pub(super) fn init(s:&mut Server) {
         let response=send(s,json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{
             "protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"test","version":"1"}
         }}));
@@ -572,3 +603,6 @@ mod tests {
     }
 
 }
+
+#[cfg(test)]
+mod rpc_boundary_tests;
