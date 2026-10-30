@@ -46,8 +46,15 @@ fn hmac_with_api(secret: &[u8], bytes: &[u8], api: Api) -> Result<[u8; 32]> {
         }
         let status = (api.hash)(handle, secret.as_ptr(), key_len, bytes.as_ptr(), input_len, output.as_mut_ptr(), 32);
         let closed = (api.close)(handle, 0);
-        // Preserve the original classification until regression execution.
-        if status < 0 || closed < 0 { return Err("CNG_HASH_FAILED"); }
+        // A failed close leaves resource release unconfirmed. Preserve that
+        // outcome separately, including when hashing failed too; never retry
+        // the close blindly or report a digest after an unconfirmed cleanup.
+        match (status < 0, closed < 0) {
+            (true, true) => return Err("CNG_HASH_AND_CLOSE_FAILED"),
+            (true, false) => return Err("CNG_HASH_FAILED"),
+            (false, true) => return Err("CNG_CLOSE_FAILED"),
+            (false, false) => {}
+        }
     }
     Ok(output)
 }
@@ -276,5 +283,21 @@ mod tests {
         assert_eq!(verify_signature(&[0xaa;20], &[0xdd;50], case3), Ok(()));
         let case6 = "sha256=60e431591ee0b67f0d8a26aacbf5b77f8e0bc6213728c5140546040f0ee37f54";
         assert_eq!(verify_signature(&[0xaa;131], b"Test Using Larger Than Block-Size Key - Hash Key First", case6), Ok(()));
+    }
+
+    #[test]
+    fn cng_native_empty_payload_and_secret_size_policy_boundaries() {
+        // Public all-zero test keys. Expected empty-input MACs were generated
+        // independently with the existing Node/OpenSSL HMAC API, not with CNG.
+        for (size, header) in [
+            (16, "sha256=b613679a0814d9ec772f95d778c35fc5ff1697c493715653c6c712144292c5ad"),
+            (1024, "sha256=69adcb6605f38cf747c40fd802ca80e7970abbb81980ea5902f83c66d6e9d6c0"),
+        ] {
+            assert_eq!(verify_signature(&vec![0;size], b"", header), Ok(()));
+        }
+        let header = "sha256=b613679a0814d9ec772f95d778c35fc5ff1697c493715653c6c712144292c5ad";
+        for size in [0,15,1025] {
+            assert_eq!(verify_signature(&vec![0;size], b"", header), Err("SECRET_SIZE"));
+        }
     }
 }

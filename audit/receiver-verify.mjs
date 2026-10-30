@@ -5,7 +5,7 @@ import os from 'node:os';
 import { hash, redact, reserveAttempt, runCommand, snapshot, snapshotDrift, provenanceLimits } from './support.mjs';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const phase = process.argv[2];
-if (!/^(?:receiver-(?:baseline|final)(?:-[1-9][0-9]*)?|receiver-regression-(?:security|state|github|http|winhttp)(?:-[1-9][0-9]*)?)$/.test(phase ?? '')) throw Error('Use a fresh named receiver attempt');
+if (!/^(?:receiver-(?:baseline|final)(?:-[1-9][0-9]*)?|receiver-regression-(?:security|state|github|http|winhttp|retained|commit)(?:-[1-9][0-9]*)?)$/.test(phase ?? '')) throw Error('Use a fresh named receiver attempt');
 const attempt = reserveAttempt(root, phase);
 const env = { ...process.env, CARGO_NET_OFFLINE: 'true' };
 const clean = value => redact(value, root);
@@ -17,6 +17,8 @@ const regressions = {
   github: ['test', '-p', 'cwg-github', '--lib', '--locked', '--offline', 'audit_', '--', '--nocapture'],
   http: ['test', '-p', 'cwg-github', '--lib', '--locked', '--offline', 'http_security_regression_', '--', '--nocapture'],
   winhttp: ['test', '-p', 'cwg-github', '--bin', 'cwg-github', '--locked', '--offline', 'audit_', '--', '--nocapture'],
+  retained: ['test', '-p', 'cwg-state', '--test', 'retained_access', '--locked', '--offline', 'security_regression_', '--', '--nocapture'],
+  commit: ['test', '-p', 'cwg-state', '--lib', '--locked', '--offline', 'commit_tests', '--', '--nocapture'],
 };
 const regression = phase.startsWith('receiver-regression-') ? regressions[phase.match(/^receiver-regression-([a-z]+)/)[1]] : null;
 const gates = regression ? [['test', 'cargo', regression]] : [

@@ -3,19 +3,48 @@
 use cwg_protocol::{GithubSource, Message};
 use cwg_security::{Result, decode, verify_signature};
 use cwg_state::{Binding, Store};
-use serde::Deserialize;
-use std::{collections::BTreeSet, net::SocketAddr, path::PathBuf};
+use serde::{Deserialize, de::{MapAccess, Visitor, value::MapAccessDeserializer}};
+use std::{collections::BTreeSet, fmt, marker::PhantomData, net::SocketAddr, path::PathBuf};
 
 // Private typed-boundary seam; generic security decoding remains format-neutral.
 fn decode_model<T: serde::de::DeserializeOwned>(bytes: &[u8], limit: usize) -> Result<T> {
     decode(bytes, limit)
 }
 
+// Preserve direct map access (including duplicate fields); do not first decode
+// through Value. Every typed model below requires an object, even when nested.
+struct Object<T>(T);
+impl<'de, T: Deserialize<'de>> Deserialize<'de> for Object<T> {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> std::result::Result<Self, D::Error> {
+        struct ObjectVisitor<T>(PhantomData<T>);
+        impl<'de, T: Deserialize<'de>> Visitor<'de> for ObjectVisitor<T> {
+            type Value = Object<T>;
+            fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { f.write_str("a named GitHub receiver object") }
+            fn visit_map<A: MapAccess<'de>>(self, access: A) -> std::result::Result<Self::Value, A::Error> {
+                T::deserialize(MapAccessDeserializer::new(access)).map(Object)
+            }
+        }
+        deserializer.deserialize_map(ObjectVisitor(PhantomData))
+    }
+}
+macro_rules! object_model {
+    ($(#[$attribute:meta])* $model:ident, $wire:ident { $($(#[$field_attribute:meta])* $field:ident: $field_type:ty),* $(,)? }) => {
+        #[derive(Deserialize)]
+        $(#[$attribute])*
+        struct $wire { $($(#[$field_attribute])* $field: $field_type),* }
+        impl<'de> Deserialize<'de> for $model {
+            fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> std::result::Result<Self, D::Error> {
+                let Object(raw) = Object::<$wire>::deserialize(deserializer)?;
+                Ok(Self { $($field: raw.$field),* })
+            }
+        }
+    };
+}
+
 pub mod http;
 pub const MAX_EVENT_BYTES: usize = 512 * 1024;
 
-#[derive(Clone, Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Debug)]
 pub struct Route {
     pub binding: Binding,
     pub author_ids: Vec<u64>,
@@ -23,8 +52,7 @@ pub struct Route {
     pub not_before: String,
     pub installation_id: Option<u64>,
 }
-#[derive(Clone, Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Debug)]
 pub struct Config {
     pub schema: String,
     pub enabled: bool,
@@ -72,20 +100,28 @@ impl Config {
 /// built ONLY from validated config/IDs, never from URLs supplied in an event.
 pub trait GithubApi { fn get(&self, path: &str) -> Result<Vec<u8>>; }
 
-#[derive(Deserialize)]
-struct User { id: u64, login: String, #[serde(rename = "type")] kind: String }
-#[derive(Deserialize)]
+struct User { id: u64, login: String, kind: String }
 struct Repository { id: u64, full_name: String, owner: User }
-#[derive(Deserialize)]
 struct Issue { id: u64, number: u64, state: String, locked: bool, pull_request: Option<serde_json::Value> }
-#[derive(Deserialize)]
 struct Comment { id: u64, body: String, user: User, issue_url: String, created_at: String, updated_at: String }
-#[derive(Deserialize)]
 struct Permission { permission: String, user: User }
-#[derive(Deserialize)]
 struct Installation { id: u64 }
-#[derive(Deserialize)]
 struct Event { action: String, repository: Repository, issue: Issue, comment: Comment, sender: User, installation: Option<Installation> }
+
+object_model!(#[serde(deny_unknown_fields)] Route, WireRoute {
+    binding: Binding, author_ids: Vec<u64>, not_before: String, installation_id: Option<u64>,
+});
+object_model!(#[serde(deny_unknown_fields)] Config, WireConfig {
+    schema: String, enabled: bool, listen: SocketAddr, state_directory: PathBuf,
+    webhook_secret_env: String, github_token_env: String, routes: Vec<Route>,
+});
+object_model!(User, WireUser { id: u64, login: String, #[serde(rename = "type")] kind: String });
+object_model!(Repository, WireRepository { id: u64, full_name: String, owner: User });
+object_model!(Issue, WireIssue { id: u64, number: u64, state: String, locked: bool, pull_request: Option<serde_json::Value> });
+object_model!(Comment, WireComment { id: u64, body: String, user: User, issue_url: String, created_at: String, updated_at: String });
+object_model!(Permission, WirePermission { permission: String, user: User });
+object_model!(Installation, WireInstallation { id: u64 });
+object_model!(Event, WireEvent { action: String, repository: Repository, issue: Issue, comment: Comment, sender: User, installation: Option<Installation> });
 
 pub struct Ingress<'a, A: GithubApi> {
     pub config: &'a Config,

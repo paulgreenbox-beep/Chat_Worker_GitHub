@@ -4,6 +4,8 @@ use serde::de::{DeserializeOwned, MapAccess, SeqAccess, Visitor};
 use serde::{Deserialize, Deserializer};
 use std::{collections::BTreeSet, fmt};
 
+pub mod windows_acl;
+
 pub type Result<T> = std::result::Result<T, &'static str>;
 
 /// Validate every object (including ignored GitHub extension fields) before

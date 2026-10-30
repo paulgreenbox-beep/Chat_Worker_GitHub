@@ -3,10 +3,13 @@
 #![forbid(unsafe_code)]
 use cwg_protocol::{ChatTarget, DeliveryStatus, Message, validate, validate_binding};
 use cwg_router::{BindingKey, MessageKey, Router};
-use serde::{Deserialize, Serialize};
+use cwg_security::windows_acl::open_private_journal;
+use serde::de::{MapAccess, Visitor, value::MapAccessDeserializer};
+use serde::{Deserialize, Deserializer, Serialize};
 use std::{
-    collections::{BTreeMap, BTreeSet},
-    fs::{self, File, OpenOptions},
+    collections::BTreeMap,
+    fmt,
+    fs::{self, File},
     io::{Read, Write},
     path::{Path, PathBuf},
 };
@@ -17,8 +20,7 @@ const MAX_RECORD: usize = 512 * 1024;
 const MAX_MESSAGES: usize = 1024;
 const MAX_RECORDS: u64 = 20_000;
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct Binding {
     pub id: String,
     pub repository_id: u64,
@@ -30,6 +32,59 @@ pub struct Binding {
     /// Operator-selected account namespace; not proof of a live Codex account.
     pub account_id: String,
     pub target: ChatTarget,
+}
+
+// Owner configuration and persisted records are named-field objects. Derived
+// struct decoding alone also accepts positional arrays, which the writer never
+// emits and which must not become another local trust-boundary representation.
+fn object_only<'de, D, T>(deserializer: D) -> std::result::Result<T, D::Error>
+where
+    D: Deserializer<'de>,
+    T: Deserialize<'de>,
+{
+    struct Object<T>(std::marker::PhantomData<T>);
+    impl<'de, T: Deserialize<'de>> Visitor<'de> for Object<T> {
+        type Value = T;
+        fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+            formatter.write_str("a named-field object")
+        }
+        fn visit_map<M: MapAccess<'de>>(self, map: M) -> std::result::Result<T, M::Error> {
+            T::deserialize(MapAccessDeserializer::new(map))
+        }
+    }
+    deserializer.deserialize_map(Object(std::marker::PhantomData))
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct BindingWire {
+    id: String,
+    repository_id: u64,
+    owner_id: u64,
+    repository: String,
+    issue_number: u64,
+    goal_id: String,
+    generation: u64,
+    account_id: String,
+    target: ChatTarget,
+}
+impl<'de> Deserialize<'de> for Binding {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> std::result::Result<Self, D::Error> {
+        let raw: BindingWire = object_only(deserializer)?;
+        let binding = Self {
+            id: raw.id,
+            repository_id: raw.repository_id,
+            owner_id: raw.owner_id,
+            repository: raw.repository,
+            issue_number: raw.issue_number,
+            goal_id: raw.goal_id,
+            generation: raw.generation,
+            account_id: raw.account_id,
+            target: raw.target,
+        };
+        binding.validate().map_err(serde::de::Error::custom)?;
+        Ok(binding)
+    }
 }
 impl Binding {
     pub fn validate(&self) -> Result<()> {
@@ -45,14 +100,29 @@ fn identifier(s: &str) -> bool {
     !s.is_empty() && s.len() <= 128 && s.bytes().all(|c| c.is_ascii_alphanumeric() || b"-_:".contains(&c))
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Debug, Serialize)]
 struct Pending {
     binding_id: String,
     generation: u64,
     repository_id: u64,
     delivery_id: String,
     message: Message,
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct PendingWire {
+    binding_id: String,
+    generation: u64,
+    repository_id: u64,
+    delivery_id: String,
+    message: Message,
+}
+impl<'de> Deserialize<'de> for Pending {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> std::result::Result<Self, D::Error> {
+        let raw: PendingWire = object_only(deserializer)?;
+        Ok(Self { binding_id: raw.binding_id, generation: raw.generation,
+            repository_id: raw.repository_id, delivery_id: raw.delivery_id, message: raw.message })
+    }
 }
 #[derive(Clone, Debug, Serialize)]
 pub struct Item {
@@ -69,17 +139,26 @@ pub enum Transition { Begin, Accepted, Unknown, Acknowledge, Complete, Block }
 enum Event {
     Bind { binding: Binding },
     Put { item: Pending },
+    DeliveryAlias { binding_id: String, message_id: String, delivery_id: String },
     Advance { binding_id: String, message_id: String, transition: Transition },
 }
-#[derive(Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[derive(Serialize)]
 struct Record { schema: String, sequence: u64, event: Event }
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RecordWire { schema: String, sequence: u64, event: Event }
+impl<'de> Deserialize<'de> for Record {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> std::result::Result<Self, D::Error> {
+        let raw: RecordWire = object_only(deserializer)?;
+        Ok(Self { schema: raw.schema, sequence: raw.sequence, event: raw.event })
+    }
+}
 #[derive(Default)]
 struct View {
     router: Router,
     bindings: BTreeMap<String, Binding>,
     messages: BTreeMap<String, Pending>,
-    deliveries: BTreeSet<String>,
+    deliveries: BTreeMap<String, String>,
     order: Vec<String>,
     sequence: u64,
 }
@@ -105,13 +184,22 @@ impl View {
                     || item.message.message_id != format!("gh:{}:{}", b.repository_id, item.message.source.comment_id) {
                     return Err("MESSAGE_BINDING_MISMATCH");
                 }
-                if self.messages.len() >= MAX_MESSAGES || self.deliveries.contains(&item.delivery_id) {
+                if self.messages.len() >= MAX_MESSAGES || self.deliveries.contains_key(&item.delivery_id)
+                    || self.messages.contains_key(&item.message.message_id) {
                     return Err("INBOX_CAPACITY_OR_REPLAY");
                 }
                 self.router.enqueue_verified(item.message.clone()).map_err(|_| "MESSAGE_CONFLICT")?;
-                self.deliveries.insert(item.delivery_id.clone());
+                self.deliveries.insert(item.delivery_id.clone(), item.message.message_id.clone());
                 self.order.push(item.message.message_id.clone());
                 self.messages.insert(item.message.message_id.clone(), item.clone());
+            }
+            Event::DeliveryAlias { binding_id, message_id, delivery_id } => {
+                let item = self.messages.get(message_id).ok_or("MESSAGE_UNKNOWN")?;
+                if &item.binding_id != binding_id || !identifier(delivery_id)
+                    || self.deliveries.contains_key(delivery_id) {
+                    return Err("DELIVERY_CONFLICT");
+                }
+                self.deliveries.insert(delivery_id.clone(), message_id.clone());
             }
             Event::Advance { binding_id, message_id, transition } => {
                 let item = self.messages.get(message_id).ok_or("MESSAGE_UNKNOWN")?;
@@ -137,23 +225,22 @@ impl View {
 
 /// The parent directory must already exist and be protected from other users.
 /// This file lock is concurrency control, not an OS security sandbox.
-pub struct Store { path: PathBuf }
+pub struct Store { root: PathBuf }
 impl Store {
     pub fn open(root: &Path) -> Result<Self> {
         if !root.is_absolute() || !root.is_dir() { return Err("STATE_ROOT_REQUIRED"); }
         no_links(root)?;
-        Ok(Self { path: root.join("inbox.jsonl") })
+        // Inspect actual opened directory/file owners and DACLs before accepting
+        // the store. The guard pins checked ancestors during this inspection.
+        let _guard = open_private_journal(root).map_err(state_path_error)?;
+        Ok(Self { root: root.into() })
     }
     fn transact<T>(&self, op: impl FnOnce(&mut View) -> Result<(T, Option<Event>)>) -> Result<T> {
-        no_links(&self.path)?;
-        let mut options = OpenOptions::new();
-        options.read(true).append(true).create(true);
-        #[cfg(unix)]
-        { use std::os::unix::fs::OpenOptionsExt; options.mode(0o600); }
-        let mut file = options.open(&self.path).map_err(|_| "STATE_OPEN")?;
+        let mut guard = open_private_journal(&self.root).map_err(state_path_error)?;
+        let file = guard.file_mut();
         file.try_lock().map_err(|_| "STATE_BUSY_OR_LOCK_FAILED")?;
         // The handle and its OS lock live through load, validation, append and fsync.
-        let mut view = load(&mut file)?;
+        let mut view = load(file)?;
         let (value, event) = op(&mut view)?;
         if let Some(event) = event {
             if view.sequence >= MAX_RECORDS { return Err("JOURNAL_CAPACITY"); }
@@ -161,12 +248,18 @@ impl Store {
             let record = Record { schema: "cwg-journal-v1".into(), sequence: view.sequence + 1, event };
             let mut bytes = serde_json::to_vec(&record).map_err(|_| "JOURNAL_ENCODE")?;
             bytes.push(b'\n');
-            if bytes.len() > MAX_RECORD || file.metadata().map_err(|_| "STATE_METADATA")?.len() + bytes.len() as u64 > MAX_JOURNAL {
+            if bytes.len() > MAX_RECORD || file.metadata().map_err(|_| "STATE_METADATA")?.len()
+                .checked_add(bytes.len() as u64).is_none_or(|total| total > MAX_JOURNAL) {
                 return Err("JOURNAL_CAPACITY");
             }
             // Any error here has an uncertain persistence outcome: caller MUST
             // reconcile by reading, never assume that nothing was appended.
-            file.write_all(&bytes).and_then(|_| file.sync_all()).map_err(|_| "STATE_COMMIT_UNKNOWN")?;
+            commit_bytes(file, Some(&bytes))?;
+        } else {
+            // A prior full append may be visible even when its sync failed.
+            // A no-op/read reconciliation cannot acknowledge durable success
+            // until it has successfully synchronized the observed prefix.
+            commit_bytes(file, None)?;
         }
         Ok(value)
     }
@@ -184,9 +277,15 @@ impl Store {
         if !identifier(delivery_id) { return Err("DELIVERY_ID_INVALID"); }
         self.transact(|v| {
             v.binding(binding)?;
+            if v.deliveries.get(delivery_id).is_some_and(|old| old != &message.message_id) {
+                return Err("DELIVERY_CONFLICT");
+            }
             if let Some(old) = v.messages.get(&message.message_id) {
                 if old.message == message && old.binding_id == binding.id && old.generation == binding.generation {
-                    return Ok((false, None));
+                    let event = (!v.deliveries.contains_key(delivery_id)).then(|| Event::DeliveryAlias {
+                        binding_id: binding.id.clone(), message_id: message.message_id.clone(), delivery_id: delivery_id.into(),
+                    });
+                    return Ok((false, event));
                 }
                 return Err("MESSAGE_CONFLICT");
             }
@@ -199,6 +298,7 @@ impl Store {
     /// Trusted controller only. This records an observation; it does NOT prove
     /// provider acceptance/worker completion. Not exposed by the receiver CLI.
     pub fn advance(&self, binding: &Binding, id: &str, transition: Transition) -> Result<()> {
+        if !identifier(id) { return Err("MESSAGE_ID_INVALID"); }
         self.transact(|v| {
             v.binding(binding)?;
             Ok(((), Some(Event::Advance { binding_id: binding.id.clone(), message_id: id.into(), transition })))
@@ -219,6 +319,10 @@ impl Store {
         })
     }
 }
+
+fn state_path_error(error: &'static str) -> &'static str {
+    if error == "ACL_FILE_BUSY" { "STATE_BUSY_OR_LOCK_FAILED" } else { error }
+}
 fn load(file: &mut File) -> Result<View> {
     let mut raw = Vec::new();
     file.take(MAX_JOURNAL + 1).read_to_end(&mut raw).map_err(|_| "STATE_READ")?;
@@ -228,12 +332,85 @@ fn load(file: &mut File) -> Result<View> {
     let mut view = View::default();
     for line in raw.split_inclusive(|b| *b == b'\n') {
         if line.len() > MAX_RECORD || view.sequence >= MAX_RECORDS { return Err("JOURNAL_CAPACITY"); }
-        let record: Record = serde_json::from_slice(line).map_err(|_| "JOURNAL_CORRUPT")?;
+        let record: Record = cwg_security::decode(line, MAX_RECORD).map_err(|_| "JOURNAL_CORRUPT")?;
         if record.schema != "cwg-journal-v1" || record.sequence != view.sequence + 1 { return Err("JOURNAL_SEQUENCE"); }
         view.apply(&record.event)?;
         view.sequence = record.sequence;
     }
     Ok(view)
+}
+
+trait CommitIo {
+    fn append(&mut self, bytes: &[u8]) -> std::io::Result<()>;
+    fn synchronize(&mut self) -> std::io::Result<()>;
+}
+impl CommitIo for File {
+    fn append(&mut self, bytes: &[u8]) -> std::io::Result<()> { self.write_all(bytes) }
+    fn synchronize(&mut self) -> std::io::Result<()> { self.sync_all() }
+}
+fn commit_bytes(io: &mut impl CommitIo, bytes: Option<&[u8]>) -> Result<()> {
+    if let Some(bytes) = bytes {
+        io.append(bytes).map_err(|_| "STATE_COMMIT_UNKNOWN")?;
+        io.synchronize().map_err(|_| "STATE_COMMIT_UNKNOWN")?;
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod commit_tests {
+    use super::*;
+    #[derive(Default)]
+    struct FaultIo {
+        bytes: Vec<u8>,
+        partial_limit: Option<usize>,
+        fail_sync: bool,
+        append_calls: usize,
+        sync_calls: usize,
+    }
+    impl CommitIo for FaultIo {
+        fn append(&mut self, bytes: &[u8]) -> std::io::Result<()> {
+            self.append_calls += 1;
+            if let Some(limit) = self.partial_limit {
+                self.bytes.extend_from_slice(&bytes[..limit.min(bytes.len())]);
+                return Err(std::io::Error::other("injected partial append"));
+            }
+            self.bytes.extend_from_slice(bytes);
+            Ok(())
+        }
+        fn synchronize(&mut self) -> std::io::Result<()> {
+            self.sync_calls += 1;
+            if self.fail_sync { Err(std::io::Error::other("injected fsync failure")) } else { Ok(()) }
+        }
+    }
+    #[test]
+    fn partial_append_is_unknown_and_never_automatically_replayed_or_removed() {
+        let mut io = FaultIo { partial_limit: Some(3), ..FaultIo::default() };
+        assert_eq!(commit_bytes(&mut io, Some(b"record\n")), Err("STATE_COMMIT_UNKNOWN"));
+        assert_eq!(io.bytes, b"rec");
+        assert_eq!(io.append_calls, 1);
+        assert_eq!(io.sync_calls, 0);
+    }
+    #[test]
+    fn visible_append_with_failed_sync_is_not_durable_until_reconciliation_sync_succeeds() {
+        let mut io = FaultIo { fail_sync: true, ..FaultIo::default() };
+        assert_eq!(commit_bytes(&mut io, Some(b"complete record\n")), Err("STATE_COMMIT_UNKNOWN"));
+        assert_eq!(io.bytes, b"complete record\n");
+        assert_eq!(commit_bytes(&mut io, None), Err("STATE_COMMIT_UNKNOWN"));
+        assert_eq!(io.append_calls, 1);
+        assert_eq!(io.sync_calls, 2);
+        io.fail_sync = false;
+        assert_eq!(commit_bytes(&mut io, None), Ok(()));
+        assert_eq!(io.append_calls, 1);
+        assert_eq!(io.sync_calls, 3);
+        assert_eq!(io.bytes, b"complete record\n");
+    }
+    #[test]
+    fn even_a_no_op_refuses_success_when_observed_journal_cannot_be_synchronized() {
+        let mut io = FaultIo { fail_sync: true, ..FaultIo::default() };
+        assert_eq!(commit_bytes(&mut io, None), Err("STATE_COMMIT_UNKNOWN"));
+        assert_eq!(io.append_calls, 0);
+        assert_eq!(io.sync_calls, 1);
+    }
 }
 fn no_links(path: &Path) -> Result<()> {
     for p in path.ancestors() {

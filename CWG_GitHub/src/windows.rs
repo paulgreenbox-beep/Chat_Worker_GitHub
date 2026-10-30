@@ -7,9 +7,27 @@ const OPTION_CONNECT_RETRIES: u32 = 4;
 const OPTION_DISABLE_FEATURE: u32 = 63;
 const OPTION_SECURE_PROTOCOLS: u32 = 84;
 const TLS_1_2: u32 = 0x800;
-// Behavior-preserving policy seam. Regression tests require explicit policy.
-fn session_options() -> &'static [(u32, u32)] { &[] }
-fn close_status(_closed: i32) -> Result<()> { Ok(()) }
+// Explicit per-session policy, independent of host defaults: TLS 1.2 and one
+// connection attempt. No application retry or legacy-TLS fallback is added.
+fn session_options() -> &'static [(u32, u32)] { &[(OPTION_SECURE_PROTOCOLS, TLS_1_2), (OPTION_CONNECT_RETRIES, 1)] }
+fn close_status(closed: i32) -> Result<()> { if closed == 0 { Err("GITHUB_CLEANUP_UNKNOWN") } else { Ok(()) } }
+fn combined_result<T>(operation: Result<T>, cleanup: Result<()>) -> Result<T> {
+    match (operation, cleanup) {
+        (operation, Ok(())) => operation,
+        (Ok(_), Err(_)) => Err("GITHUB_CLEANUP_UNKNOWN"),
+        (Err(error), Err(_)) => Err(match error {
+            "GITHUB_TRANSPORT" => "GITHUB_TRANSPORT_AND_CLEANUP_UNKNOWN",
+            "GITHUB_HANDLE" => "GITHUB_HANDLE_AND_CLEANUP_UNKNOWN",
+            "GITHUB_STATUS_NOT_OK" => "GITHUB_STATUS_AND_CLEANUP_UNKNOWN",
+            "GITHUB_DEADLINE" => "GITHUB_DEADLINE_AND_CLEANUP_UNKNOWN",
+            "GITHUB_RESPONSE_TOO_LARGE" => "GITHUB_RESPONSE_SIZE_AND_CLEANUP_UNKNOWN",
+            "GITHUB_RESPONSE_LENGTH_QUERY" | "GITHUB_RESPONSE_LENGTH_INVALID" | "GITHUB_RESPONSE_LENGTH_MISMATCH" => "GITHUB_RESPONSE_LENGTH_AND_CLEANUP_UNKNOWN",
+            _ => "GITHUB_OPERATION_AND_CLEANUP_UNKNOWN",
+        }),
+    }
+}
+#[link(name = "kernel32")]
+unsafe extern "system" { fn GetLastError() -> u32; }
 #[link(name = "winhttp")]
 unsafe extern "system" {
     fn WinHttpOpen(agent: *const u16, access: u32, proxy: *const u16, bypass: *const u16, flags: u32) -> Handle;
@@ -84,6 +102,15 @@ fn validate_path(path: &str) -> Result<()> {
     }
     Ok(())
 }
+fn response_length(succeeded: i32, size: u32, length: u32, error: u32) -> Result<Option<usize>> {
+    if succeeded == 0 {
+        // ERROR_WINHTTP_HEADER_NOT_FOUND. All other query failures are refusal.
+        return if error == 12150 { Ok(None) } else { Err("GITHUB_RESPONSE_LENGTH_QUERY") };
+    }
+    if size != 4 { return Err("GITHUB_RESPONSE_LENGTH_INVALID"); }
+    if length as usize > MAX_EVENT_BYTES { return Err("GITHUB_RESPONSE_TOO_LARGE"); }
+    Ok(Some(length as usize))
+}
 struct Endpoint<'a> { host: &'a str, port: u16, secure: bool }
 fn request(path: &str, deadline: Instant, endpoint: Endpoint<'_>, header_text: &str) -> RequestOutcome {
     let mut handles = Handles::default();
@@ -112,21 +139,30 @@ fn request(path: &str, deadline: Instant, endpoint: Endpoint<'_>, header_text: &
             let mut status = 0u32; let mut size = 4u32;
             ok(WinHttpQueryHeaders(request, 19 | 0x2000_0000, ptr::null(), (&mut status as *mut u32).cast(), &mut size, ptr::null_mut()))?;
             if status != 200 { return Err("GITHUB_STATUS_NOT_OK"); }
+            let mut length = 0u32; let mut size = 4u32;
+            let queried = WinHttpQueryHeaders(request, 5 | 0x2000_0000, ptr::null(), (&mut length as *mut u32).cast(), &mut size, ptr::null_mut());
+            let error = if queried == 0 { GetLastError() } else { 0 };
+            let expected = response_length(queried, size, length, error)?;
             let mut result = Vec::new(); let mut chunk = [0u8; 8192];
             loop {
                 let timeout = remaining(deadline)?;
                 ok(WinHttpSetTimeouts(request, timeout, timeout, timeout, timeout))?;
                 let mut n = 0u32;
                 ok(WinHttpReadData(request, chunk.as_mut_ptr().cast(), chunk.len() as u32, &mut n))?;
-                if n == 0 { break; }
+                remaining(deadline)?;
+                if n == 0 {
+                    if expected.is_some_and(|length| result.len() != length) { return Err("GITHUB_RESPONSE_LENGTH_MISMATCH"); }
+                    break;
+                }
                 if n as usize > chunk.len() || result.len() + n as usize > MAX_EVENT_BYTES { return Err("GITHUB_RESPONSE_TOO_LARGE"); }
+                if expected.is_some_and(|length| result.len() + n as usize > length) { return Err("GITHUB_RESPONSE_LENGTH_MISMATCH"); }
                 result.extend_from_slice(&chunk[..n as usize]);
             }
             Ok(result)
         }
     })();
     let cleanup = handles.close_all();
-    RequestOutcome { result: cleanup.result.and(result), #[cfg(test)] stats: cleanup.stats }
+    RequestOutcome { result: combined_result(result, cleanup.result), #[cfg(test)] stats: cleanup.stats }
 }
 pub struct Client<'a> { token: &'a str, deadline: Instant }
 impl<'a> Client<'a> {
@@ -140,6 +176,22 @@ impl GithubApi for Client<'_> {
         // The only production endpoint; payload/config/environment cannot alter it.
         let headers = format!("Authorization: Bearer {}\r\nAccept: application/vnd.github+json\r\nX-GitHub-Api-Version: 2022-11-28\r\n", self.token);
         request(path, self.deadline, Endpoint { host: "api.github.com", port: 443, secure: true }, &headers).result
+    }
+}
+/// Controlled local integration only; compiled out of every production build.
+#[cfg(test)]
+pub(crate) struct FixtureClient { address: std::net::SocketAddr, deadline: Instant }
+#[cfg(test)]
+impl FixtureClient {
+    pub(crate) fn new(address: std::net::SocketAddr, deadline: Instant) -> Result<Self> {
+        if !address.ip().is_loopback() || address.port() == 0 { return Err("GITHUB_FIXTURE_LOOPBACK_REQUIRED"); }
+        Ok(Self { address, deadline })
+    }
+}
+#[cfg(test)]
+impl GithubApi for FixtureClient {
+    fn get(&self, path: &str) -> Result<Vec<u8>> {
+        request(path, self.deadline, Endpoint { host: &self.address.ip().to_string(), port: self.address.port(), secure: false }, "Accept: application/json\r\n").result
     }
 }
 #[cfg(test)]
@@ -195,6 +247,19 @@ mod tests {
         assert_eq!(close_status(0), Err("GITHUB_CLEANUP_UNKNOWN"));
         assert_eq!(close_status(1), Ok(()));
     }
+    #[test] fn audit_cleanup_failure_keeps_operation_failure_class() {
+        assert_eq!(combined_result::<()>(Err("GITHUB_TRANSPORT"), Err("GITHUB_CLEANUP_UNKNOWN")), Err("GITHUB_TRANSPORT_AND_CLEANUP_UNKNOWN"));
+        assert_eq!(combined_result::<()>(Err("GITHUB_STATUS_NOT_OK"), Err("GITHUB_CLEANUP_UNKNOWN")), Err("GITHUB_STATUS_AND_CLEANUP_UNKNOWN"));
+        assert_eq!(combined_result::<()>(Ok(()), Err("GITHUB_CLEANUP_UNKNOWN")), Err("GITHUB_CLEANUP_UNKNOWN"));
+        assert_eq!(combined_result::<()>(Err("GITHUB_TRANSPORT"), Ok(())), Err("GITHUB_TRANSPORT"));
+    }
+    #[test] fn audit_response_length_query_errors_are_not_treated_as_absent() {
+        assert_eq!(response_length(0, 4, 0, 12150), Ok(None));
+        for error in [0, 13, 122, 12002] { assert_eq!(response_length(0, 4, 0, error), Err("GITHUB_RESPONSE_LENGTH_QUERY")); }
+        assert_eq!(response_length(1, 8, 2, 0), Err("GITHUB_RESPONSE_LENGTH_INVALID"));
+        assert_eq!(response_length(1, 4, MAX_EVENT_BYTES as u32 + 1, 0), Err("GITHUB_RESPONSE_TOO_LARGE"));
+        assert_eq!(response_length(1, 4, MAX_EVENT_BYTES as u32, 0), Ok(Some(MAX_EVENT_BYTES)));
+    }
     #[test] fn audit_native_session_policy_is_observable() {
         let agent = wide("CWG-native-test"); let mut handles = Handles::default();
         // SAFETY: owned synchronous session, u32 option buffers, no networking.
@@ -204,6 +269,9 @@ mod tests {
             let mut retries = 0u32; let mut size = 4;
             ok(WinHttpQueryOption(session, OPTION_CONNECT_RETRIES, (&mut retries as *mut u32).cast(), &mut size)).unwrap();
             assert_eq!(retries, 1);
+            let mut protocols = 0u32; let mut size = 4;
+            ok(WinHttpQueryOption(session, OPTION_SECURE_PROTOCOLS, (&mut protocols as *mut u32).cast(), &mut size)).unwrap();
+            assert_ne!(protocols & TLS_1_2, 0); assert_eq!(protocols & (0x8 | 0x20 | 0x80 | 0x200), 0);
         }
         let cleanup = handles.close_all(); cleanup.result.unwrap(); assert_eq!(cleanup.stats.closed, 1);
     }
@@ -239,7 +307,26 @@ mod tests {
         let raw = b"HTTP/1.1 200 OK\r\nContent-Length: 10\r\nConnection: close\r\n\r\n{}".to_vec();
         let (address, _, worker) = server(raw, Duration::ZERO);
         let outcome = fixture_get(address, Instant::now() + Duration::from_secs(2)); worker.join().unwrap();
-        assert!(outcome.result.is_err(), "truncated transfer accepted"); closed(&outcome, 3);
+        assert_eq!(outcome.result, Err("GITHUB_RESPONSE_LENGTH_MISMATCH")); closed(&outcome, 3);
+    }
+    #[test] fn audit_native_exact_response_boundary_and_missing_length() {
+        let body = vec![b'x'; MAX_EVENT_BYTES];
+        let (address, _, worker) = server(response("200 OK", &body, ""), Duration::ZERO);
+        let outcome = fixture_get(address, Instant::now() + Duration::from_secs(2)); worker.join().unwrap();
+        assert_eq!(outcome.result.as_ref().unwrap().len(), MAX_EVENT_BYTES); closed(&outcome, 3);
+        let (address, _, worker) = server(b"HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n{}".to_vec(), Duration::ZERO);
+        let outcome = fixture_get(address, Instant::now() + Duration::from_secs(2)); worker.join().unwrap();
+        assert_eq!(outcome.result.as_ref().unwrap().as_slice(), b"{}"); closed(&outcome, 3);
+    }
+    #[test] fn audit_fixture_client_refuses_non_loopback_without_network() {
+        let deadline = Instant::now() + Duration::from_secs(1);
+        assert_eq!(FixtureClient::new("192.0.2.1:80".parse().unwrap(), deadline).err(), Some("GITHUB_FIXTURE_LOOPBACK_REQUIRED"));
+        assert_eq!(FixtureClient::new("127.0.0.1:0".parse().unwrap(), deadline).err(), Some("GITHUB_FIXTURE_LOOPBACK_REQUIRED"));
+    }
+    #[test] fn audit_token_format_rejects_header_injection_before_network() {
+        for token in [String::new(), "x".repeat(15), "x".repeat(4097), "x xxxxxxxxxxxxxxxx".into(), "xxxxxxxxxxxxxxxx\r\nInjected: true".into()] {
+            assert_eq!(Client::new(&token, Instant::now()).err(), Some("GITHUB_TOKEN_FORMAT"));
+        }
     }
     #[test] fn audit_native_timeout_refuses_and_releases_owned_handles() {
         let (address, _, worker) = server(response("200 OK", b"{}", ""), Duration::from_millis(250));

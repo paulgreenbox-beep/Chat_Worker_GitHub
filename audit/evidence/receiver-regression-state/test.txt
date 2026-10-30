@@ -1,0 +1,42 @@
+command: cargo test -p cwg-state --test durable --locked --offline security_regression_ -- --nocapture
+CARGO_NET_OFFLINE=true
+exit_code: 101
+stdout:
+
+running 4 tests
+test security_regression_journal_record_requires_object ... FAILED
+test security_regression_delivery_alias_cannot_cross_sources ... FAILED
+test security_regression_new_delivery_alias_is_durable ... FAILED
+test security_regression_state_root_requires_private_acl ... FAILED
+
+failures:
+
+failures:
+    security_regression_delivery_alias_cannot_cross_sources
+    security_regression_journal_record_requires_object
+    security_regression_new_delivery_alias_is_durable
+    security_regression_state_root_requires_private_acl
+
+test result: FAILED. 0 passed; 4 failed; 0 ignored; 0 measured; 10 filtered out; finished in 0.14s
+
+
+stderr:
+   Compiling cwg-state v0.1.0 (<workspace>\CWG_State)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.11s
+     Running tests\durable.rs (target\debug\deps\durable-05629e273abc6e80.exe)
+
+thread 'security_regression_journal_record_requires_object' (34332) panicked at CWG_State\tests\durable.rs:89:5:
+a journal record must be a named-field object
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+thread 'security_regression_delivery_alias_cannot_cross_sources' (29136) panicked at CWG_State\tests\durable.rs:79:5:
+canonical-message dedupe must not conceal delivery ID correlation to another source
+
+thread 'security_regression_new_delivery_alias_is_durable' (4224) panicked at CWG_State\tests\durable.rs:71:5:
+a delivery ID already observed for comment 1 must not name comment 2 after restart
+
+thread 'security_regression_state_root_requires_private_acl' (19060) panicked at CWG_State\tests\durable.rs:103:5:
+State must refuse an actual World-writable/readable root, not trust an operator-only comment
+error: test failed, to rerun pass `-p cwg-state --test durable`
+
+error: null

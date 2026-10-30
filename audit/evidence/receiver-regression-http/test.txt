@@ -1,0 +1,47 @@
+command: cargo test -p cwg-github --lib --locked --offline http_security_regression_ -- --nocapture
+CARGO_NET_OFFLINE=true
+exit_code: 101
+stdout:
+
+running 4 tests
+test http::tests::http_security_regression_bad_mac_shape_is_refused_before_body_read ... FAILED
+test http::tests::http_security_regression_empty_host_is_rejected ... FAILED
+test http::tests::http_security_regression_missing_signature_is_refused_before_body_read ... FAILED
+test http::tests::http_security_regression_unknown_event_is_refused_before_body_read ... FAILED
+
+failures:
+
+failures:
+    http::tests::http_security_regression_bad_mac_shape_is_refused_before_body_read
+    http::tests::http_security_regression_empty_host_is_rejected
+    http::tests::http_security_regression_missing_signature_is_refused_before_body_read
+    http::tests::http_security_regression_unknown_event_is_refused_before_body_read
+
+test result: FAILED. 0 passed; 4 failed; 0 ignored; 0 measured; 48 filtered out; finished in 0.01s
+
+
+stderr:
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.03s
+     Running unittests src\lib.rs (target\debug\deps\cwg_github-a21bf4f20bf26e84.exe)
+
+thread 'http::tests::http_security_regression_bad_mac_shape_is_refused_before_body_read' (17532) panicked at CWG_GitHub\src\http.rs:99:9:
+assertion `left == right` failed
+  left: Some("HTTP_TRUNCATED_OR_TIMEOUT")
+ right: Some("HTTP_SIGNATURE_FORMAT")
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+thread 'http::tests::http_security_regression_empty_host_is_rejected' (26648) panicked at CWG_GitHub\src\http.rs:80:9:
+assertion failed: read_request(&mut bytes.as_bytes()).is_err()
+
+thread 'http::tests::http_security_regression_missing_signature_is_refused_before_body_read' (18804) panicked at CWG_GitHub\src\http.rs:86:9:
+assertion `left == right` failed
+  left: Some("HTTP_TRUNCATED_OR_TIMEOUT")
+ right: Some("HTTP_HEADER_MISSING")
+
+thread 'http::tests::http_security_regression_unknown_event_is_refused_before_body_read' (28624) panicked at CWG_GitHub\src\http.rs:93:9:
+assertion `left == right` failed
+  left: Some("HTTP_TRUNCATED_OR_TIMEOUT")
+ right: Some("HTTP_EVENT_UNSUPPORTED")
+error: test failed, to rerun pass `-p cwg-github --lib`
+
+error: null

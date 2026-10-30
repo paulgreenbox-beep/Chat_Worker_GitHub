@@ -42,6 +42,7 @@ version = "0.1.0"
 dependencies = [
  "cwg-protocol",
  "cwg-router",
+ "cwg-security",
  "serde",
  "serde_json",
 ]
