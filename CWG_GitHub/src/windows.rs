@@ -531,7 +531,7 @@ mod tests {
             // this worker. Wait for peer close, bounded by the read timeout.
             let mut trailing = [0u8; 1];
             if let Ok(count) = stream.read(&mut trailing) {
-                assert_eq!(count, 0, "fixture GET must not contain trailing input");
+                assert_eq!(count, 0, "fixture GET must not contain trailing input; first byte={:02x}", trailing[0]);
             }
         });
         (address, receive, worker)
