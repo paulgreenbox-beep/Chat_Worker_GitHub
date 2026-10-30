@@ -10,3 +10,4 @@ Cargo.lock text eol=lf
 audit/evidence/** -text
 # HMAC fixtures are exact raw bytes, including their final LF.
 CWG_GitHub/tests/fixtures/** -text
+audit/retained-fixture-repro.json -text

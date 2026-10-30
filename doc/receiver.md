@@ -112,7 +112,8 @@ Numeric repository and owner IDs, Issue identity, comment author, unchanged body
 and timestamps, cutoff, optional installation ID, and current write/maintain/admin
 permission must agree. URLs from payloads are never requested. TLS verification
 is not bypassed; WinHTTP redirects, automatic credentials, cookies and proxy
-discovery are disabled. HTTP GET only, no automatic network retries.
+discovery are disabled. HTTP GET only, one WinHTTP connection attempt and no
+application retry loop; this does not suppress TCP retransmission.
 
 The destination, GOAL, account namespace and generation come from local config,
 never from comment text. Message IDs are allocated as `gh:REPOSITORY_ID:COMMENT_ID`.

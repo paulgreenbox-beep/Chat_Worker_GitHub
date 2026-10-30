@@ -195,8 +195,18 @@ struct RequestOutcome {
 fn wide(s: &str) -> Vec<u16> {
     s.encode_utf16().chain(Some(0)).collect()
 }
+#[cfg_attr(test, track_caller)]
 fn ok(v: i32) -> Result<()> {
     if v == 0 {
+        #[cfg(test)]
+        {
+            // Capture immediately, before diagnostics can change LastError.
+            let error = unsafe { GetLastError() };
+            eprintln!(
+                "CWG_WINHTTP_TEST_ERROR caller_line={} win32={error}",
+                std::panic::Location::caller().line()
+            );
+        }
         Err("GITHUB_TRANSPORT")
     } else {
         Ok(())
@@ -441,7 +451,7 @@ mod tests {
     use super::*;
     use std::{
         io::{Read, Write},
-        net::{SocketAddr, TcpListener},
+        net::{Shutdown, SocketAddr, TcpListener},
         sync::mpsc,
         thread,
         time::Duration,
@@ -486,6 +496,9 @@ mod tests {
             stream
                 .set_read_timeout(Some(Duration::from_secs(2)))
                 .unwrap();
+            stream
+                .set_write_timeout(Some(Duration::from_secs(2)))
+                .unwrap();
             let mut raw = Vec::new();
             let mut byte = [0u8; 1];
             while raw.len() < 16_384 && !raw.ends_with(b"\r\n\r\n") {
@@ -496,7 +509,30 @@ mod tests {
             }
             let _ = send.send(raw);
             thread::sleep(delay);
-            let _ = stream.write_all(&response);
+            if let Err(error) = stream.write_all(&response).and_then(|()| stream.flush()) {
+                eprintln!(
+                    "CWG_WINHTTP_FIXTURE_WRITE_ERROR kind={:?} win32={:?}",
+                    error.kind(),
+                    error.raw_os_error()
+                );
+                return;
+            }
+            // Explicit FIN before releasing the owned socket; do not rely on
+            // an implicit close while the client is still consuming the body.
+            if let Err(error) = stream.shutdown(Shutdown::Write) {
+                eprintln!(
+                    "CWG_WINHTTP_FIXTURE_SHUTDOWN_ERROR kind={:?} win32={:?}",
+                    error.kind(),
+                    error.raw_os_error()
+                );
+                return;
+            }
+            // The synchronous request closes its handles before the test joins
+            // this worker. Wait for peer close, bounded by the read timeout.
+            let mut trailing = [0u8; 1];
+            if let Ok(count) = stream.read(&mut trailing) {
+                assert_eq!(count, 0, "fixture GET must not contain trailing input");
+            }
         });
         (address, receive, worker)
     }

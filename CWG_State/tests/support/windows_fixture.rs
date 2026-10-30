@@ -365,16 +365,10 @@ impl WritableMapping {
 impl Drop for WritableMapping {
     fn drop(&mut self) {
         // SAFETY: these are exactly the still-owned view and mapping handle.
-        assert_ne!(
-            unsafe { UnmapViewOfFile(self.view) },
-            0,
-            "release owned mapping view"
-        );
-        assert_ne!(
-            unsafe { CloseHandle(self.mapping) },
-            0,
-            "release owned mapping handle"
-        );
+        let unmapped = unsafe { UnmapViewOfFile(self.view) };
+        let closed = unsafe { CloseHandle(self.mapping) };
+        assert_ne!(unmapped, 0, "release owned mapping view");
+        assert_ne!(closed, 0, "release owned mapping handle");
     }
 }
 

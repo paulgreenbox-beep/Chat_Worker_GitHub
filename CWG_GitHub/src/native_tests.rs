@@ -109,6 +109,9 @@ impl ApiFixture {
                     Err(error) => panic!("owned API listener failed: {error}"),
                 };
                 let raw = read_header(&mut stream);
+                stream
+                    .set_write_timeout(Some(Duration::from_secs(2)))
+                    .unwrap();
                 let header = String::from_utf8(raw).unwrap();
                 assert!(
                     !header.to_ascii_lowercase().contains("authorization:"),
@@ -125,6 +128,12 @@ impl ApiFixture {
                 counter.fetch_add(1, Ordering::SeqCst);
                 write!(stream, "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n", body.len()).unwrap();
                 stream.write_all(body).unwrap();
+                stream.flush().unwrap();
+                stream.shutdown(Shutdown::Write).unwrap();
+                let mut trailing = [0u8; 1];
+                if let Ok(count) = stream.read(&mut trailing) {
+                    assert_eq!(count, 0, "fixture GET must not contain trailing input");
+                }
             }
         });
         Self {

@@ -19,6 +19,47 @@ impl Drop for Temp {
 }
 
 #[test]
+fn fixture_fence_rejects_unregistered_junction_path_before_creating_it() {
+    let temp = Temp::new();
+    let target = temp.0.join("owned-target");
+    fs::create_dir(&target).unwrap();
+    let scratch = temp.0.parent().unwrap().join(format!(
+        "{}-unregistered-scratch",
+        temp.0.file_name().unwrap().to_str().unwrap()
+    ));
+    // This fresh sibling belongs to this test, but is deliberately absent from
+    // the fixture helper's registry. Never alter its parent's ACL.
+    fs::create_dir(&scratch).expect("create only new owned unregistered scratch");
+    struct Scratch(PathBuf);
+    impl Drop for Scratch {
+        fn drop(&mut self) {
+            fs::remove_dir_all(&self.0).expect("release only owned unregistered scratch");
+            assert!(!self.0.exists());
+        }
+    }
+    let scratch = Scratch(scratch);
+    let link = scratch.0.join("junction");
+    assert!(windows_fixture::create_fixture_junction(&link, &target).is_err());
+    assert!(
+        !link.exists(),
+        "fixture ownership refusal must precede any filesystem mutation"
+    );
+}
+
+#[test]
+fn fixture_fence_refuses_to_change_acl_through_a_hardlink_alias() {
+    let temp = Temp::new();
+    let file = temp.0.join("synthetic.json");
+    fs::write(&file, b"synthetic owned data").unwrap();
+    fs::hard_link(&file, temp.0.join("alias.json")).unwrap();
+    assert!(
+        windows_fixture::set_fixture_acl(&file, None).is_err(),
+        "a lexical owned-root fence must not grant ACL mutation through a multiply linked file"
+    );
+    assert_eq!(fs::read(file).unwrap(), b"synthetic owned data");
+}
+
+#[test]
 fn hardlinked_private_config_and_journal_are_refused_without_mutating_bytes() {
     let temp = Temp::new();
     let config = temp.0.join("config.json");
@@ -61,7 +102,9 @@ fn native_junction_is_refused_as_config_ancestor_and_state_root() {
         open_private_journal(&junction).err(),
         Some("ACL_REPARSE_REFUSED")
     );
-    assert_eq!(Store::open(&junction).err(), Some("STATE_REPARSE_REFUSED"));
+    // Rust 1.97 identifies this native junction as a symbolic-link file type,
+    // so State's earlier generic link guard refuses it before the reparse arm.
+    assert_eq!(Store::open(&junction).err(), Some("STATE_LINK_REFUSED"));
     assert_eq!(
         fs::read(target.join("config.json")).unwrap(),
         b"synthetic config"
