@@ -1,0 +1,113 @@
+{
+  "source_sha": "34132daff82066dbe76bf89e3ec4f6b8e81084d9",
+  "platform": "win32",
+  "architecture": "x64",
+  "cargo_net_offline": true,
+  "checks": [
+    {
+      "command": "cargo test --workspace --all-targets --locked --offline",
+      "exit_code": 0,
+      "status": "PASS",
+      "log": "locked-offline.txt",
+      "log_encoding": "plain-text",
+      "transcript_sha256": "03ddc811f02bf4d2252d59f74c2eb3a46ec5ef47e26c228dece627837e8d8c8c",
+      "log_sha256": "03ddc811f02bf4d2252d59f74c2eb3a46ec5ef47e26c228dece627837e8d8c8c",
+      "tests": {
+        "passed": 70,
+        "failed": 0,
+        "ignored": 0
+      }
+    },
+    {
+      "command": "node --test audit/tooling.test.mjs",
+      "exit_code": 0,
+      "status": "PASS_WITH_NOT_RUN",
+      "log": "node-tests.txt",
+      "log_encoding": "plain-text",
+      "transcript_sha256": "d6e4396e8aaa72674d3afada52a277e219c165a5d3982b2d5dee81be8cc6327b",
+      "log_sha256": "d6e4396e8aaa72674d3afada52a277e219c165a5d3982b2d5dee81be8cc6327b",
+      "tests": {
+        "passed": 14,
+        "failed": 0,
+        "not_run": 1
+      }
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0,
+      "status": "PASS",
+      "log": "diff-check.txt",
+      "log_encoding": "plain-text",
+      "transcript_sha256": "06295aaf402ff039ca4149210174f93718015f2ac5d30749d2cc9bd9dac5c5a1",
+      "log_sha256": "06295aaf402ff039ca4149210174f93718015f2ac5d30749d2cc9bd9dac5c5a1"
+    },
+    {
+      "command": "git diff --check a409120bbafeaefd7ad7569b7d5704e2ad6122d5 HEAD",
+      "exit_code": 0,
+      "status": "PASS",
+      "log": "base-diff-check.txt",
+      "log_encoding": "plain-text",
+      "transcript_sha256": "4724369809518e1c00ae18c76de675db8995f07f7a5b6ecea45cf43f4b7fc569",
+      "log_sha256": "4724369809518e1c00ae18c76de675db8995f07f7a5b6ecea45cf43f4b7fc569"
+    },
+    {
+      "command": "cmd /c ver",
+      "exit_code": 0,
+      "status": "PASS",
+      "log": "platform.txt",
+      "log_encoding": "plain-text",
+      "transcript_sha256": "556bf6790a01b33be814616aa28d6e0f372dea404eb4dd1e852b96c92270abed",
+      "log_sha256": "556bf6790a01b33be814616aa28d6e0f372dea404eb4dd1e852b96c92270abed"
+    }
+  ],
+  "inputs_before": {
+    ".gitattributes": "6676b7fad54485f5ae9ece5f1013f7745e9ba4825f14254a45ff76d6ed1c31e8",
+    ".gitignore": "d1752af5f5d370da3e94482a39ee24453fe08676d3a2392c9a94674168be4e33",
+    "CWG_Protocol/Cargo.toml": "c345932db8e323eff9e07ea0b1dd182820c6f2e75fd11a5b17b74e00644d0edb",
+    "CWG_Protocol/src/lib.rs": "2ce9ba2e840117abdab1dbd33533526795f3723fb898bd3af168741c534f822c",
+    "CWG_Protocol/tests/hardening_regressions.rs": "9ff82b6997e64121448a459799221137f1cc275be470dedfa55933ae53cdd937",
+    "CWG_Protocol/tests/raw_json.rs": "e5a5274a319b96e7803826237b1e6680afe0fb5541d11e4ca736a921b9421385",
+    "CWG_Protocol/tests/status_wire.rs": "b3dfbabd9b7aa7e2cb2d690810076266ad9ce9f78a84692405c861330feaf895",
+    "CWG_Protocol/tests/validation.rs": "dfb58d316b9d6ff8c1f120103db5c7ea192079813dee1e7f0930cdd7dccb187a",
+    "CWG_Router/Cargo.toml": "2306c7255ea15ab31ecadd931d6c328e34a8fe9a2e4b62535294b3e0d2a05c6a",
+    "CWG_Router/src/lib.rs": "b0ebff1e703a5a5252f0a5d2187990a327c6e80a35a3da3b1a771d5d476d1b18",
+    "CWG_Router/tests/audit_regressions.rs": "b450e8b135546960ef1a87d576d2fbb3210dfa5adf9c49db88e9cb05a6297478",
+    "CWG_Router/tests/cross_goal_replay.rs": "c82534f9ba875245e867618e38d66562035ef68096901a569798fb35a268a2f0",
+    "CWG_Router/tests/routing.rs": "d650dd0a661dc42c32e4f7383becfc4f63b3b294eb4bee75cd674d1edcac4256",
+    "CWG_Router/tests/security_bounds_and_scope.rs": "352b7d94cc69ce539328a3bde86e8975b74b56d129f02ad431eaea7764edf944",
+    "CWG_Router/tests/security_regressions.rs": "c1e83d53305fcd2465d6ba67d41c0173e179dd89036e5e65cbe120dbca6f1446",
+    "Cargo.lock": "de20aef2c05bc29e5ce9da633f03fe7247e7daaae26a9b6de45b1ee7889bfc23",
+    "Cargo.toml": "26330dc65b7c2c132d2fcca49d39746598fa0a0b6eae0b24a76ec326e4655c15",
+    "audit/review.mjs": "46c42968efcc7efd4224e5fae623c2e43b019608984ebca8533640895c80546f",
+    "audit/support.mjs": "1460a84c3689abfb189dd988977dc78cab58cc6e68989fc2b62a395677408a0a",
+    "audit/tooling.test.mjs": "a0ac05ae788fca7d16bc167815d0fc3a21e2da2fdb9d13d02b829e93df3d2c27",
+    "audit/verify.mjs": "2694e8fc238ff638b84e5f5ef219f44721f2fdab821d6d264ee78a88ca5958da"
+  },
+  "source_sha_after": "34132daff82066dbe76bf89e3ec4f6b8e81084d9",
+  "inputs_after": {
+    ".gitattributes": "6676b7fad54485f5ae9ece5f1013f7745e9ba4825f14254a45ff76d6ed1c31e8",
+    ".gitignore": "d1752af5f5d370da3e94482a39ee24453fe08676d3a2392c9a94674168be4e33",
+    "CWG_Protocol/Cargo.toml": "c345932db8e323eff9e07ea0b1dd182820c6f2e75fd11a5b17b74e00644d0edb",
+    "CWG_Protocol/src/lib.rs": "2ce9ba2e840117abdab1dbd33533526795f3723fb898bd3af168741c534f822c",
+    "CWG_Protocol/tests/hardening_regressions.rs": "9ff82b6997e64121448a459799221137f1cc275be470dedfa55933ae53cdd937",
+    "CWG_Protocol/tests/raw_json.rs": "e5a5274a319b96e7803826237b1e6680afe0fb5541d11e4ca736a921b9421385",
+    "CWG_Protocol/tests/status_wire.rs": "b3dfbabd9b7aa7e2cb2d690810076266ad9ce9f78a84692405c861330feaf895",
+    "CWG_Protocol/tests/validation.rs": "dfb58d316b9d6ff8c1f120103db5c7ea192079813dee1e7f0930cdd7dccb187a",
+    "CWG_Router/Cargo.toml": "2306c7255ea15ab31ecadd931d6c328e34a8fe9a2e4b62535294b3e0d2a05c6a",
+    "CWG_Router/src/lib.rs": "b0ebff1e703a5a5252f0a5d2187990a327c6e80a35a3da3b1a771d5d476d1b18",
+    "CWG_Router/tests/audit_regressions.rs": "b450e8b135546960ef1a87d576d2fbb3210dfa5adf9c49db88e9cb05a6297478",
+    "CWG_Router/tests/cross_goal_replay.rs": "c82534f9ba875245e867618e38d66562035ef68096901a569798fb35a268a2f0",
+    "CWG_Router/tests/routing.rs": "d650dd0a661dc42c32e4f7383becfc4f63b3b294eb4bee75cd674d1edcac4256",
+    "CWG_Router/tests/security_bounds_and_scope.rs": "352b7d94cc69ce539328a3bde86e8975b74b56d129f02ad431eaea7764edf944",
+    "CWG_Router/tests/security_regressions.rs": "c1e83d53305fcd2465d6ba67d41c0173e179dd89036e5e65cbe120dbca6f1446",
+    "Cargo.lock": "de20aef2c05bc29e5ce9da633f03fe7247e7daaae26a9b6de45b1ee7889bfc23",
+    "Cargo.toml": "26330dc65b7c2c132d2fcca49d39746598fa0a0b6eae0b24a76ec326e4655c15",
+    "audit/review.mjs": "46c42968efcc7efd4224e5fae623c2e43b019608984ebca8533640895c80546f",
+    "audit/support.mjs": "1460a84c3689abfb189dd988977dc78cab58cc6e68989fc2b62a395677408a0a",
+    "audit/tooling.test.mjs": "a0ac05ae788fca7d16bc167815d0fc3a21e2da2fdb9d13d02b829e93df3d2c27",
+    "audit/verify.mjs": "2694e8fc238ff638b84e5f5ef219f44721f2fdab821d6d264ee78a88ca5958da"
+  },
+  "failures": [],
+  "status": "PASS_WITH_NOT_RUN",
+  "exit_code": 0
+}

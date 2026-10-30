@@ -11,7 +11,7 @@ authority. No containers, VMs, model calls, automatic merge or installed service
 
 | Component | Source in this branch | Qualification |
 |---|---|---|
-| CWG_Protocol / CWG_Router | Existing validated contracts and routing | Prior audit at its recorded SHA; unchanged here |
+| CWG_Protocol / CWG_Router | Strict status decoding, logical routing and new cross-GOAL/suspension regressions from PR #1 | Historic foundation 70 PASS applies only to its recorded source; integrated HEAD NOT_RUN |
 | CWG_Security | Bounded object-only JSON checks; Windows CNG HMAC; handle-based Windows ACL checks | Native results and exact SHA in the Windows audit below |
 | CWG_State | Bounded protected file-locked/fsynced inbox; persistent replay protection | Native subprocess/fault results in the Windows audit; power-loss durability NOT_VERIFIED |
 | CWG_GitHub | Foreground Windows receiver, fixed-host API reconciliation, local inbox CLI | Controlled-loopback receiver-to-inbox integration; live GitHub/Codex delivery NOT_RUN |
@@ -26,6 +26,27 @@ from PR #1 at `a7aa73858a85620f4ca10f09fcf75d86186f662c`, preserving its
 scoped MessageKey, body budgets, binding suspension and all regression tests.
 See [the preserved security review](audit/SECURITY_REVIEW.md); integrating that
 review is separate from the native receiver verification.
+
+## WP-01A foundation integration (NOT_RUN)
+
+This isolated branch merges the current Protocol/Router Draft PR #1 source
+(fbab27fe3a73103fa6193d25c484058877a0e62b) into Receiver/State Draft PR #2
+(383bff0d070533a948d0ee9dfcb980fbb1775862). The merge commit has the Receiver
+as first parent and the Protocol foundation as second parent. Neither existing
+PR branch nor main has been changed.
+
+- DeliveryStatus now accepts only canonical uppercase JSON strings.
+- The four new Rust test files cover status wires, cross-GOAL replay,
+  revocation/lifecycle and suspension interleavings.
+- PR #2's native Windows protection, delivery aliases and strict persisted
+  Transition decoder remain intact; prior tests and evidence are preserved.
+- Foundation audit/evidence are carried by their existing Git blob bytes.
+
+The prior 70-test foundation and 204-test receiver reports are historical
+receipts for different earlier source SHAs. Full Rust/Cargo and Windows-native
+checks on this new integrated HEAD are **NOT_RUN**. This remains source-only
+integration: there is no qualified Codex Adapter, MCP, GitHub Publisher or
+end-to-end delivery. See [WP-01A handoff](audit/WP01A_INTEGRATION.md).
 
 ## Receiver workflow
 

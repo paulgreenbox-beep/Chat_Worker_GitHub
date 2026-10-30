@@ -1,0 +1,10 @@
+command: cargo clippy --workspace --all-targets -- -D warnings
+exit_code: 0
+stdout:
+
+stderr:
+    Checking cwg-protocol v0.1.0 (<workspace>\CWG_Protocol)
+    Checking cwg-router v0.1.0 (<workspace>\CWG_Router)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.68s
+
+error: null

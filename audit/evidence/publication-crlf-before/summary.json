@@ -1,0 +1,11 @@
+{
+  "source_sha": "47332799c6e8742d8b902f9adfd6190c2fa849ed",
+  "command": "git diff --check a409120bbafeaefd7ad7569b7d5704e2ad6122d5 HEAD",
+  "exit_code": 2,
+  "status": "FAIL",
+  "reason": "Native Windows platform receipt preserves CRLF; carriage returns require explicit evidence whitespace policy",
+  "log": "diff-check.txt",
+  "log_encoding": "json-envelope",
+  "log_sha256": "f855828808d2b172be7d011d122030a08dbaee36819dab143df01e165346173d",
+  "transcript_sha256": "3e9ce7fb8172e912f60807b689396d1037d0a9e5972009e56e4ee65d62a77c8b"
+}

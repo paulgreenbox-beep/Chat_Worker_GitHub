@@ -1,0 +1,8 @@
+command: cargo build --workspace --release
+exit_code: 0
+stdout:
+
+stderr:
+    Finished `release` profile [optimized] target(s) in 0.04s
+
+error: null

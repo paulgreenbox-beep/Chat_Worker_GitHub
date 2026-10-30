@@ -13,3 +13,5 @@ CWG_GitHub/tests/fixtures/** -text
 audit/retained-fixture-repro.json -text
 # This native PowerShell receipt intentionally preserves its original CRLF bytes.
 audit/evidence/receiver-baseline/platform-3.json whitespace=cr-at-eol
+# Preserve foundation platform CRLF receipts without normalizing raw evidence.
+audit/evidence/foundation-extra*/platform.txt whitespace=cr-at-eol

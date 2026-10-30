@@ -84,7 +84,7 @@ impl Message {
         })
     }
 }
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum DeliveryStatus {
     Pending,
@@ -96,6 +96,39 @@ pub enum DeliveryStatus {
     Blocked,
     Unknown,
 }
+
+impl<'de> Deserialize<'de> for DeliveryStatus {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        struct StatusVisitor;
+
+        impl<'de> Visitor<'de> for StatusVisitor {
+            type Value = DeliveryStatus;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+                formatter.write_str("an uppercase CWG delivery-status string")
+            }
+
+            fn visit_str<E: de::Error>(self, value: &str) -> Result<Self::Value, E> {
+                match value {
+                    "PENDING" => Ok(DeliveryStatus::Pending),
+                    "VERIFIED" => Ok(DeliveryStatus::Verified),
+                    "DELIVERING" => Ok(DeliveryStatus::Delivering),
+                    "DELIVERED" => Ok(DeliveryStatus::Delivered),
+                    "ACKNOWLEDGED" => Ok(DeliveryStatus::Acknowledged),
+                    "COMPLETED" => Ok(DeliveryStatus::Completed),
+                    "BLOCKED" => Ok(DeliveryStatus::Blocked),
+                    "UNKNOWN" => Ok(DeliveryStatus::Unknown),
+                    _ => Err(E::custom("unknown CWG delivery status")),
+                }
+            }
+        }
+
+        // A unit enum's derived decoder also accepts {"UNKNOWN":null}. The
+        // protocol uses string values only; do not request enum/map access.
+        deserializer.deserialize_str(StatusVisitor)
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum InvalidMessage {
     Schema,
