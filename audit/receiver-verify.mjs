@@ -5,7 +5,7 @@ import os from 'node:os';
 import { hash, readRepositoryFile, redact, repositoryFiles, reserveAttempt, runCommand, snapshot, snapshotDrift, provenanceLimits } from './support.mjs';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const phase = process.argv[2];
-if (!/^(?:receiver-(?:baseline|final)(?:-[1-9][0-9]*)?|receiver-regression-(?:security|state|github|http|winhttp|retained|commit|workspace|fixture|server|pool)(?:-[1-9][0-9]*)?)$/.test(phase ?? '')) throw Error('Use a fresh named receiver attempt');
+if (!/^(?:receiver-(?:baseline|final)(?:-[1-9][0-9]*)?|receiver-regression-(?:security|state|github|http|winhttp|retained|commit|workspace|fixture|server|pool|delayed)(?:-[1-9][0-9]*)?)$/.test(phase ?? '')) throw Error('Use a fresh named receiver attempt');
 const attempt = reserveAttempt(root, phase);
 const env = { ...process.env, CARGO_NET_OFFLINE: 'true' };
 const clean = value => redact(value, root);
@@ -29,6 +29,7 @@ const regressions = {
   fixture: ['test', '-p', 'cwg-state', '--test', 'windows_paths', '--locked', '--offline', 'fixture_fence_', '--', '--nocapture'],
   server: ['test', '-p', 'cwg-github', '--bin', 'cwg-github', '--locked', '--offline', 'audit_fixture_', '--', '--nocapture'],
   pool: ['test', '-p', 'cwg-github', '--bin', 'cwg-github', '--locked', '--offline', 'audit_sessions_refuse_global', '--', '--nocapture'],
+  delayed: ['test', '-p', 'cwg-github', '--bin', 'cwg-github', '--locked', '--offline', 'audit_fixture_accepts_headers', '--', '--nocapture'],
 };
 const regression = phase.startsWith('receiver-regression-') ? regressions[phase.match(/^receiver-regression-([a-z]+)/)[1]] : null;
 const gates = regression ? [['test', 'cargo', regression]] : [

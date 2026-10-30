@@ -594,6 +594,31 @@ mod tests {
         );
     }
     #[test]
+    fn audit_fixture_accepts_headers_arriving_after_tcp_connection() {
+        use std::net::TcpStream;
+        let (address, _, worker) = server(response("200 OK", b"{}", ""), Duration::ZERO);
+        let mut stream = TcpStream::connect(address).unwrap();
+        stream
+            .set_read_timeout(Some(Duration::from_secs(2)))
+            .unwrap();
+        thread::sleep(Duration::from_millis(50));
+        let written = write!(
+            stream,
+            "GET /repos/fixture/repo HTTP/1.1\r\nHost: {address}\r\n\r\n"
+        );
+        let _ = stream.shutdown(Shutdown::Write);
+        let mut reply = Vec::new();
+        let received = stream.read_to_end(&mut reply);
+        worker.join().unwrap();
+        written.expect("a live accepted socket must wait for delayed request bytes");
+        received.unwrap();
+        assert!(
+            reply.starts_with(b"HTTP/1.1 200 OK\r\n"),
+            "a delayed valid HTTP request must receive the fixture response"
+        );
+        assert!(reply.ends_with(b"{}"));
+    }
+    #[test]
     fn audit_fixture_survives_empty_probe_before_the_real_request() {
         use std::net::TcpStream;
         let (address, capture, worker) = server(response("200 OK", b"{}", ""), Duration::ZERO);
