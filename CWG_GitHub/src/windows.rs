@@ -591,6 +591,27 @@ mod tests {
         assert_eq!(outcome.stats.unknown, 0);
     }
     #[test]
+    fn audit_fixture_refuses_an_interrupted_http_request_without_a_success_response() {
+        use std::net::TcpStream;
+        let (address, capture, worker) = server(response("200 OK", b"{}", ""), Duration::ZERO);
+        let mut stream = TcpStream::connect(address).unwrap();
+        stream
+            .set_read_timeout(Some(Duration::from_secs(2)))
+            .unwrap();
+        stream
+            .write_all(b"GET /repos/fixture/repo HTTP/1.1\r\nHost: ")
+            .unwrap();
+        stream.shutdown(Shutdown::Write).unwrap();
+        let mut reply = Vec::new();
+        stream.read_to_end(&mut reply).unwrap();
+        worker.join().unwrap();
+        assert!(!capture.recv().unwrap().ends_with(b"\r\n\r\n"));
+        assert!(
+            reply.is_empty(),
+            "an incomplete request must not receive a fabricated success response"
+        );
+    }
+    #[test]
     fn audit_explicit_modern_tls_policy_is_required() {
         let mask = session_options()
             .iter()
