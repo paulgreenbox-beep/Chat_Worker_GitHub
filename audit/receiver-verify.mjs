@@ -52,6 +52,7 @@ try {
     if (saved.exit_code !== 0 || digest !== hash(saved.stdout)) throw Error('Commit raw fixture inputs before verification');
   }
   if (phase.startsWith('receiver-final') && !before.inputs_match_head) throw Error('Commit build/audit inputs before final verification');
+  if (phase.startsWith('receiver-final') && env.CWG_NATIVE_PRIVATE_POOL === '1') throw Error('Final gates must use production-equivalent native policy');
   result.rustc = runCommand('rustc', ['--version', '--verbose'], { cwd: root, env });
   result.cargo = runCommand('cargo', ['--version'], { cwd: root, env });
   if (result.rustc.exit_code !== 0 || result.cargo.exit_code !== 0) throw Error('Tool version check failed');

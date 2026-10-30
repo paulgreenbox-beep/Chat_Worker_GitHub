@@ -543,7 +543,11 @@ mod tests {
                 lower.contains("cookie:"),
                 raw.len()
             );
+            let complete = raw.ends_with(b"\r\n\r\n");
             let _ = send.send(raw);
+            if !complete {
+                return;
+            }
             thread::sleep(delay);
             if let Err(error) = stream.write_all(&response).and_then(|()| stream.flush()) {
                 eprintln!(
