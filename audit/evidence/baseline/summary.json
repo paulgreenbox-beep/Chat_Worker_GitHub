@@ -1,0 +1,100 @@
+{
+  "source_sha": "a409120bbafeaefd7ad7569b7d5704e2ad6122d5",
+  "phase": "baseline",
+  "started_utc": "2026-10-30T13:29:07.016Z",
+  "platform": "win32",
+  "architecture": "x64",
+  "os_release": "10.0.26300",
+  "rustc": {
+    "exit_code": 0,
+    "stdout": "rustc 1.97.1 (8bab26f4f 2026-07-14)\nbinary: rustc\ncommit-hash: 8bab26f4f68e0e26f0bb7960be334d5b520ea452\ncommit-date: 2026-07-14\nhost: x86_64-pc-windows-msvc\nrelease: 1.97.1\nLLVM version: 22.1.6\n",
+    "stderr": "",
+    "error": null
+  },
+  "cargo": {
+    "exit_code": 0,
+    "stdout": "cargo 1.97.1 (c980f4866 2026-06-30)\n",
+    "stderr": "",
+    "error": null
+  },
+  "inputs_before": {
+    "CWG_Protocol/Cargo.toml": "c2a8386bf3916b4310f9e4d1346bc92966f0249eea1a44593e31fe833318b2ee",
+    "CWG_Protocol/src/lib.rs": "289ebacb1a7a9197b825f541cc0e21e4fa8b47dfcaa97515e15032bf7a317fb4",
+    "CWG_Router/Cargo.toml": "b86b66d2406cf71f73a37935d7987af03fd56c0dd25486fe67ec6409ded6a0bb",
+    "CWG_Router/src/lib.rs": "88a9e16866d6b082e44614de0af7065fcfa2b2f0867f78eadf20d9ca8a917ae1",
+    "Cargo.toml": "1ab59e84c8e71e728034b1a0944e412994c2dfa74b3aff8411d578fb7abc0646"
+  },
+  "checks": [
+    {
+      "command": "cargo metadata --format-version 1",
+      "exit_code": 0,
+      "status": "PASS",
+      "tests": null,
+      "log": "metadata.txt",
+      "log_sha256": "d380b37701780cebe0c0e4dc92408e3b28966c649cd3e190a260144a6d588107"
+    },
+    {
+      "command": "cargo fmt --all -- --check",
+      "exit_code": 1,
+      "status": "FAIL",
+      "tests": null,
+      "log": "fmt.txt",
+      "log_sha256": "637c317eaa053d6e004c88f47d28bd62c0c4c0ded3a9985549890ae3ff317c93",
+      "transcript_sha256": "2fc02f0d0c8db5bd3b3eba373c040117c868ce3d66f38d643522866680cee570",
+      "log_encoding": "json-envelope"
+    },
+    {
+      "command": "cargo check --workspace --all-targets",
+      "exit_code": 0,
+      "status": "PASS",
+      "tests": null,
+      "log": "check.txt",
+      "log_sha256": "9694325dc98d75dd88d23a4f749e8ab710b8be763d17cb11fb390a8e9aafcfa3"
+    },
+    {
+      "command": "cargo test --workspace --all-targets",
+      "exit_code": 0,
+      "status": "PASS",
+      "tests": {
+        "passed": 3,
+        "failed": 0,
+        "ignored": 0
+      },
+      "log": "test.txt",
+      "log_sha256": "65fd65d51d4bd324b2c904420f4276198ffb6e8fc4f208d4d53d9694d660cdcb"
+    },
+    {
+      "command": "cargo clippy --workspace --all-targets -- -D warnings",
+      "exit_code": 0,
+      "status": "PASS",
+      "tests": null,
+      "log": "clippy.txt",
+      "log_sha256": "855f9109b816ba46d684275bb4934ed401953a288788301edc8239344a07182b"
+    },
+    {
+      "command": "cargo build --workspace",
+      "exit_code": 0,
+      "status": "PASS",
+      "tests": null,
+      "log": "debug.txt",
+      "log_sha256": "d399931adf501072a20944fc814823639483bfd6cfe35fe9192158916ad22210"
+    },
+    {
+      "command": "cargo build --workspace --release",
+      "exit_code": 0,
+      "status": "PASS",
+      "tests": null,
+      "log": "release.txt",
+      "log_sha256": "9d0120610f98079ff1d3e06422843f564c68dd672e10715cf0f846e037a046da"
+    }
+  ],
+  "finished_utc": "2026-10-30T13:29:22.459Z",
+  "inputs_after": {
+    "CWG_Protocol/Cargo.toml": "c2a8386bf3916b4310f9e4d1346bc92966f0249eea1a44593e31fe833318b2ee",
+    "CWG_Protocol/src/lib.rs": "289ebacb1a7a9197b825f541cc0e21e4fa8b47dfcaa97515e15032bf7a317fb4",
+    "CWG_Router/Cargo.toml": "b86b66d2406cf71f73a37935d7987af03fd56c0dd25486fe67ec6409ded6a0bb",
+    "CWG_Router/src/lib.rs": "88a9e16866d6b082e44614de0af7065fcfa2b2f0867f78eadf20d9ca8a917ae1",
+    "Cargo.lock": "030748a41cbcdd73d9944fb8934dd584aa43f5d767eda1ca23c153b66dca30d0",
+    "Cargo.toml": "1ab59e84c8e71e728034b1a0944e412994c2dfa74b3aff8411d578fb7abc0646"
+  }
+}

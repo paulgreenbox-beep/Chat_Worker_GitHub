@@ -21,3 +21,13 @@ CWG is a message transport across GitHub and AI conversations. GitHub content an
 ## Required negative tests
 
 Forged signature, malformed JSON and duplicate keys, wrong repository/author, stale binding, unknown chat, replay, simultaneous claims, lost ACK, timeout, unauthorized publication, secrets exposure and reparse/path traversal when files are introduced.
+
+## Implemented boundary and remaining risks
+
+Current source implements structural message/binding validation, validated typed deserialization, raw-JSON unknown/duplicate-field rejection, canonical repository-name routing, in-memory deduplication and guarded state transitions. See [test matrix](doc/testing.md) and [source audit](audit/REPORT.md). Original unit tests remain present.
+
+The ingress, binding owner authorization, GitHub actor authorization, numeric repository/account/generation binding, signatures, permission reconciliation, persistence, distributed atomic claims, provider receipts and outbound authorization described above remain requirements, not implemented guarantees. `register`, `enqueue_verified` and status methods are ordinary public Rust APIs with trusted-controller preconditions. They cannot refuse a caller based on identity because no caller authentication exists. Do not expose them directly to untrusted clients or invent an `approved: true` flag as authorization.
+
+Public numeric IDs are syntactically validated but can still be spoofed by an untrusted caller. Global message IDs must be allocated by a trusted ingress to avoid cross-repository collision denial. Repository-name normalization closes case aliases, not rename/recreation attacks. The memory queue is unbounded and loses replay history on process restart. Raw JSON must be bounded before decoding; field validation occurs after allocation. Generic map/Value decoding discards duplicate keys, so future ingress must parse directly into the typed model. No body text is interpreted by Router as registration policy or executable code.
+
+Tests with `Mutex<Router>` and two logical Codex thread IDs cover only local model behavior. Live GitHub delivery, real caller authorization, Codex thread isolation, crash/restart recovery and release acceptance remain **NOT_RUN**. No source-only result qualifies CWG for operation.

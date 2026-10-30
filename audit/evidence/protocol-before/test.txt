@@ -1,0 +1,109 @@
+command: cargo test -p cwg-protocol --test validation
+exit_code: 101
+stdout:
+
+running 15 tests
+test delivery_status_has_exact_wire_names ... ok
+test rejects_all_duplicate_json_keys_even_identical_values ... ok
+test rejects_empty_message_identifier ... FAILED
+test rejects_empty_thread_id ... FAILED
+test rejects_invalid_numeric_identifiers ... FAILED
+test rejects_invalid_provider_and_identity_lengths ... FAILED
+test rejects_invalid_repository_names ... FAILED
+test rejects_invalid_unicode_json_and_non_ascii_identity ... FAILED
+test rejects_malformed_goal_identifiers ... FAILED
+test rejects_unknown_json_fields_at_every_level ... ok
+test rejects_wrong_schema_during_deserialization ... FAILED
+test schema_error_keeps_its_classification ... ok
+test validates_standalone_source_and_target_deserialization ... FAILED
+test rejects_oversized_body_in_bytes ... FAILED
+test valid_unicode_body_and_boundaries_round_trip ... ok
+
+failures:
+
+---- rejects_empty_message_identifier stdout ----
+
+thread 'rejects_empty_message_identifier' (27564) panicked at CWG_Protocol\tests\validation.rs:23:5:
+Deserialize bypassed validation
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- rejects_empty_thread_id stdout ----
+
+thread 'rejects_empty_thread_id' (13028) panicked at CWG_Protocol\tests\validation.rs:23:5:
+Deserialize bypassed validation
+
+---- rejects_invalid_numeric_identifiers stdout ----
+
+thread 'rejects_invalid_numeric_identifiers' (30472) panicked at CWG_Protocol\tests\validation.rs:119:13:
+issue_number: 0
+
+---- rejects_invalid_provider_and_identity_lengths stdout ----
+
+thread 'rejects_invalid_provider_and_identity_lengths' (28820) panicked at CWG_Protocol\tests\validation.rs:23:5:
+Deserialize bypassed validation
+
+---- rejects_invalid_repository_names stdout ----
+
+thread 'rejects_invalid_repository_names' (20272) panicked at CWG_Protocol\tests\validation.rs:23:5:
+Deserialize bypassed validation
+
+---- rejects_invalid_unicode_json_and_non_ascii_identity stdout ----
+
+thread 'rejects_invalid_unicode_json_and_non_ascii_identity' (27300) panicked at CWG_Protocol\tests\validation.rs:23:5:
+Deserialize bypassed validation
+
+---- rejects_malformed_goal_identifiers stdout ----
+
+thread 'rejects_malformed_goal_identifiers' (6120) panicked at CWG_Protocol\tests\validation.rs:23:5:
+Deserialize bypassed validation
+
+---- rejects_wrong_schema_during_deserialization stdout ----
+
+thread 'rejects_wrong_schema_during_deserialization' (13492) panicked at CWG_Protocol\tests\validation.rs:23:5:
+Deserialize bypassed validation
+
+---- validates_standalone_source_and_target_deserialization stdout ----
+
+thread 'validates_standalone_source_and_target_deserialization' (26676) panicked at CWG_Protocol\tests\validation.rs:127:5:
+assertion failed: serde_json::from_str::<GithubSource>(&serde_json::to_string(&source).unwrap()).is_err()
+
+---- rejects_oversized_body_in_bytes stdout ----
+
+thread 'rejects_oversized_body_in_bytes' (31984) panicked at CWG_Protocol\tests\validation.rs:23:5:
+Deserialize bypassed validation
+
+
+failures:
+    rejects_empty_message_identifier
+    rejects_empty_thread_id
+    rejects_invalid_numeric_identifiers
+    rejects_invalid_provider_and_identity_lengths
+    rejects_invalid_repository_names
+    rejects_invalid_unicode_json_and_non_ascii_identity
+    rejects_malformed_goal_identifiers
+    rejects_oversized_body_in_bytes
+    rejects_wrong_schema_during_deserialization
+    validates_standalone_source_and_target_deserialization
+
+test result: FAILED. 5 passed; 10 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+stderr:
+    Updating crates.io index
+     Locking 4 packages to latest compatible versions
+      Adding itoa v1.0.18
+      Adding memchr v2.8.3
+      Adding serde_json v1.0.154
+      Adding zmij v1.0.23
+ Downloading crates ...
+  Downloaded serde_json v1.0.154
+   Compiling zmij v1.0.23
+   Compiling serde_json v1.0.154
+   Compiling memchr v2.8.3
+   Compiling itoa v1.0.18
+   Compiling cwg-protocol v0.1.0 (<workspace>\CWG_Protocol)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.72s
+     Running tests\validation.rs (target\debug\deps\validation-4176257d830464c8.exe)
+error: test failed, to rerun pass `-p cwg-protocol --test validation`
+
+error: null

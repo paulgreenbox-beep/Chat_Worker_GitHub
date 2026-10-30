@@ -1,0 +1,9 @@
+* text=auto
+.gitattributes text eol=lf
+*.rs text eol=lf
+*.toml text eol=lf
+Cargo.lock text eol=lf
+*.mjs text eol=lf
+*.md text eol=lf
+# Preserve the exact published bytes covered by evidence SHA-256 hashes.
+audit/evidence/** -text
