@@ -14,6 +14,7 @@ const fixtureInputs = () => Object.fromEntries(repositoryFiles(root, runCommand,
   .map(file => [file, hash(readRepositoryFile(root, file))]));
 const result = { phase, started_utc: new Date().toISOString(), platform: process.platform, architecture: process.arch,
   os_release: os.release(), cargo_net_offline: true,
+  diagnostic_private_pool: env.CWG_NATIVE_PRIVATE_POOL === '1',
   native_fixture_parent: env.CWG_NATIVE_FIXTURE_PARENT ? { selection: 'explicit test-only parent; no production override', path_sha256: hash(env.CWG_NATIVE_FIXTURE_PARENT) } : { selection: 'default Windows temporary directory' },
   checks: [], failures: [], provenance_limits: provenanceLimits };
 const regressions = {

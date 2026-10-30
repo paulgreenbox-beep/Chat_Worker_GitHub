@@ -15,6 +15,10 @@ fn session_options() -> &'static [(u32, u32)] {
         (OPTION_CONNECT_RETRIES, 1),
     ]
 }
+#[cfg(test)]
+fn diagnostic_private_pool() -> bool {
+    std::env::var_os("CWG_NATIVE_PRIVATE_POOL").as_deref() == Some(std::ffi::OsStr::new("1"))
+}
 fn close_status(closed: i32) -> Result<()> {
     if closed == 0 {
         Err("GITHUB_CLEANUP_UNKNOWN")
@@ -202,9 +206,19 @@ fn ok(v: i32) -> Result<()> {
         {
             // Capture immediately, before diagnostics can change LastError.
             let error = unsafe { GetLastError() };
+            let mut extended = 0u32;
+            let mut size = 4u32;
+            let queried = unsafe {
+                WinHttpQueryOption(
+                    ptr::null_mut(),
+                    24,
+                    (&mut extended as *mut u32).cast(),
+                    &mut size,
+                )
+            };
             eprintln!(
-                "CWG_WINHTTP_TEST_ERROR caller_line={} win32={error}",
-                std::panic::Location::caller().line()
+                "CWG_WINHTTP_TEST_ERROR caller_line={} win32={error} extended_query={queried} winsock={extended}",
+                std::panic::Location::caller().line(),
             );
         }
         Err("GITHUB_TRANSPORT")
@@ -284,6 +298,17 @@ fn request(
                     session,
                     option,
                     (&mut value as *mut u32).cast(),
+                    4,
+                ))?;
+            }
+            // Controlled A/B only. No production environment override exists.
+            #[cfg(test)]
+            if diagnostic_private_pool() {
+                let mut disabled = 1u32;
+                ok(WinHttpSetOption(
+                    session,
+                    195,
+                    (&mut disabled as *mut u32).cast(),
                     4,
                 ))?;
             }
@@ -507,6 +532,17 @@ mod tests {
                 }
                 raw.push(byte[0]);
             }
+            let lower = String::from_utf8_lossy(&raw).to_ascii_lowercase();
+            eprintln!(
+                "CWG_FIXTURE_CAPTURE port={} complete={} get={} host_matches={} auth={} cookie={} bytes={}",
+                address.port(),
+                raw.ends_with(b"\r\n\r\n"),
+                lower.starts_with("get /repos/fixture/repo http/1.1\r\n"),
+                lower.contains(&format!("host: {address}\r\n")),
+                lower.contains("authorization:"),
+                lower.contains("cookie:"),
+                raw.len()
+            );
             let _ = send.send(raw);
             thread::sleep(delay);
             if let Err(error) = stream.write_all(&response).and_then(|()| stream.flush()) {
@@ -531,7 +567,11 @@ mod tests {
             // this worker. Wait for peer close, bounded by the read timeout.
             let mut trailing = [0u8; 1];
             if let Ok(count) = stream.read(&mut trailing) {
-                assert_eq!(count, 0, "fixture GET must not contain trailing input; first byte={:02x}", trailing[0]);
+                assert_eq!(
+                    count, 0,
+                    "fixture GET must not contain trailing input; first byte={:02x}",
+                    trailing[0]
+                );
             }
         });
         (address, receive, worker)
