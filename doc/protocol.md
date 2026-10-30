@@ -18,7 +18,9 @@ Binding key: GitHub repository identity + GOAL ID. Mutable chat titles are displ
 
 Decoded wire strings are bounded by byte length before a visitor copies borrowed text. Parser-owned scratch allocation for escaped strings is controlled by the raw-slice limit, not by generic Serde visitors alone. Future ingress must also limit the network request before collecting it into a slice. Generic `Deserialize` remains format-independent and requires callers to impose that raw bound. First converting JSON to a generic map/`serde_json::Value` loses duplicate keys and cannot be repaired by subsequent typed decoding. Malformed UTF-8/unpaired JSON surrogates are rejected by the JSON parser. Public fields still allow direct Rust construction, so `validate` and Router admission also enforce constraints. Debug output for Message includes body length rather than body text.
 
-`InvalidMessage::{Schema, Identity, Size, Format}` classify schema, zero numeric identity, size and syntax failures respectively. Display errors do not echo message bodies. `DeliveryStatus` has exact uppercase wire names.
+`InvalidMessage::{Schema, Identity, Size, Format}` classify schema, zero numeric identity, size and syntax failures respectively. Display errors do not echo message bodies.
+
+`DeliveryStatus` uses a JSON string with one exact uppercase value: `PENDING`, `VERIFIED`, `DELIVERING`, `DELIVERED`, `ACKNOWLEDGED`, `COMPLETED`, `BLOCKED` or `UNKNOWN`. Objects, including Serde's alternative unit-enum representation `{"UNKNOWN":null}`, and other non-string values are rejected. Serialization retains the same uppercase strings. Decoding a status identifies a model value; it does not authorize a Router transition or prove provider acceptance, a worker receipt or task completion.
 
 ## Implemented in-memory routing API
 
