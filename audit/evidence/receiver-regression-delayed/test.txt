@@ -1,0 +1,28 @@
+command: cargo test -p cwg-github --bin cwg-github --locked --offline audit_fixture_accepts_headers -- --nocapture
+CARGO_NET_OFFLINE=true
+exit_code: 101
+stdout:
+
+running 1 test
+test windows::tests::audit_fixture_accepts_headers_arriving_after_tcp_connection ... FAILED
+
+failures:
+
+failures:
+    windows::tests::audit_fixture_accepts_headers_arriving_after_tcp_connection
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 22 filtered out; finished in 0.06s
+
+
+stderr:
+   Compiling cwg-github v0.1.0 (<workspace>\CWG_GitHub)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.84s
+     Running unittests src\main.rs (target\debug\deps\cwg_github-3805a0d3b3314014.exe)
+CWG_FIXTURE_CAPTURE port=64002 complete=false get=false host_matches=false auth=false cookie=false bytes=0
+
+thread 'windows::tests::audit_fixture_accepts_headers_arriving_after_tcp_connection' (16880) panicked at CWG_GitHub\src\windows.rs:613:17:
+a live accepted socket must wait for delayed request bytes: Os { code: 10053, kind: ConnectionAborted, message: "Программа на вашем хост-компьютере разорвала установленное подключение." }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+error: test failed, to rerun pass `-p cwg-github --bin cwg-github`
+
+error: null

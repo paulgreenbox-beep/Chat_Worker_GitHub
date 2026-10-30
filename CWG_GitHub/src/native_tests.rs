@@ -49,22 +49,19 @@ fn config(root: &Path) -> Config {
     Config::from_bytes(&serde_json::to_vec(&config_value(&state)).unwrap()).unwrap()
 }
 
-fn read_header(stream: &mut TcpStream) -> Vec<u8> {
+fn read_header(stream: &mut TcpStream) -> Option<Vec<u8>> {
     stream
         .set_read_timeout(Some(Duration::from_secs(2)))
         .unwrap();
     let mut raw = Vec::new();
     let mut byte = [0u8; 1];
     while raw.len() < 16_384 && !raw.ends_with(b"\r\n\r\n") {
-        assert_eq!(
-            stream.read(&mut byte).unwrap(),
-            1,
-            "fixture request interrupted"
-        );
+        if stream.read(&mut byte).ok()? != 1 {
+            return None;
+        }
         raw.push(byte[0]);
     }
-    assert!(raw.ends_with(b"\r\n\r\n"));
-    raw
+    raw.ends_with(b"\r\n\r\n").then_some(raw)
 }
 
 struct ApiFixture {
@@ -108,7 +105,10 @@ impl ApiFixture {
                     }
                     Err(error) => panic!("owned API listener failed: {error}"),
                 };
-                let raw = read_header(&mut stream);
+                stream.set_nonblocking(false).unwrap();
+                let Some(raw) = read_header(&mut stream) else {
+                    continue;
+                };
                 stream
                     .set_write_timeout(Some(Duration::from_secs(2)))
                     .unwrap();
@@ -148,7 +148,7 @@ impl Drop for ApiFixture {
     fn drop(&mut self) {
         self.stop.store(true, Ordering::SeqCst);
         if let Some(worker) = self.worker.take() {
-            worker.join().unwrap();
+            join_owned_fixture(worker);
         }
     }
 }
@@ -179,6 +179,13 @@ impl ReceiverFixture {
                     }
                     Err(error) => panic!("owned Receiver listener failed: {error}"),
                 };
+                stream.set_nonblocking(false).unwrap();
+                stream
+                    .set_read_timeout(Some(Duration::from_secs(2)))
+                    .unwrap();
+                if !matches!(stream.peek(&mut [0u8; 1]), Ok(count) if count > 0) {
+                    continue;
+                }
                 stream
                     .set_write_timeout(Some(Duration::from_secs(2)))
                     .unwrap();
@@ -209,7 +216,16 @@ impl Drop for ReceiverFixture {
     fn drop(&mut self) {
         self.stop.store(true, Ordering::SeqCst);
         if let Some(worker) = self.worker.take() {
-            worker.join().unwrap();
+            join_owned_fixture(worker);
+        }
+    }
+}
+fn join_owned_fixture<T>(worker: JoinHandle<T>) {
+    if let Err(payload) = worker.join() {
+        if std::thread::panicking() {
+            eprintln!("OWNED_FIXTURE_WORKER_FAILED_DURING_TEST_UNWIND");
+        } else {
+            std::panic::resume_unwind(payload);
         }
     }
 }

@@ -494,76 +494,82 @@ mod tests {
         let (send, receive) = mpsc::channel();
         let worker = thread::spawn(move || {
             let deadline = Instant::now() + Duration::from_secs(4);
-            let mut stream = loop {
-                match listener.accept() {
-                    Ok((stream, _)) => break stream,
-                    Err(error)
-                        if error.kind() == std::io::ErrorKind::WouldBlock
-                            && Instant::now() < deadline =>
-                    {
-                        thread::sleep(Duration::from_millis(5))
+            for _ in 0..8 {
+                let mut stream = loop {
+                    match listener.accept() {
+                        Ok((stream, _)) => break stream,
+                        Err(error)
+                            if error.kind() == std::io::ErrorKind::WouldBlock
+                                && Instant::now() < deadline =>
+                        {
+                            thread::sleep(Duration::from_millis(5))
+                        }
+                        Err(_) => return,
                     }
-                    Err(_) => return,
+                };
+                // Windows accept inherits the listener's nonblocking mode. Return
+                // the accepted socket to blocking mode before applying timeouts.
+                stream.set_nonblocking(false).unwrap();
+                stream
+                    .set_read_timeout(Some(Duration::from_secs(2)))
+                    .unwrap();
+                stream
+                    .set_write_timeout(Some(Duration::from_secs(2)))
+                    .unwrap();
+                let mut raw = Vec::new();
+                let mut byte = [0u8; 1];
+                while raw.len() < 16_384 && !raw.ends_with(b"\r\n\r\n") {
+                    if stream.read(&mut byte).unwrap_or(0) == 0 {
+                        break;
+                    }
+                    raw.push(byte[0]);
                 }
-            };
-            stream
-                .set_read_timeout(Some(Duration::from_secs(2)))
-                .unwrap();
-            stream
-                .set_write_timeout(Some(Duration::from_secs(2)))
-                .unwrap();
-            let mut raw = Vec::new();
-            let mut byte = [0u8; 1];
-            while raw.len() < 16_384 && !raw.ends_with(b"\r\n\r\n") {
-                if stream.read(&mut byte).unwrap_or(0) == 0 {
-                    break;
+                let lower = String::from_utf8_lossy(&raw).to_ascii_lowercase();
+                eprintln!(
+                    "CWG_FIXTURE_CAPTURE port={} complete={} get={} host_matches={} auth={} cookie={} bytes={}",
+                    address.port(),
+                    raw.ends_with(b"\r\n\r\n"),
+                    lower.starts_with("get /repos/fixture/repo http/1.1\r\n"),
+                    lower.contains(&format!("host: {address}\r\n")),
+                    lower.contains("authorization:"),
+                    lower.contains("cookie:"),
+                    raw.len()
+                );
+                let complete = raw.ends_with(b"\r\n\r\n");
+                let _ = send.send(raw);
+                if !complete {
+                    continue;
                 }
-                raw.push(byte[0]);
-            }
-            let lower = String::from_utf8_lossy(&raw).to_ascii_lowercase();
-            eprintln!(
-                "CWG_FIXTURE_CAPTURE port={} complete={} get={} host_matches={} auth={} cookie={} bytes={}",
-                address.port(),
-                raw.ends_with(b"\r\n\r\n"),
-                lower.starts_with("get /repos/fixture/repo http/1.1\r\n"),
-                lower.contains(&format!("host: {address}\r\n")),
-                lower.contains("authorization:"),
-                lower.contains("cookie:"),
-                raw.len()
-            );
-            let complete = raw.ends_with(b"\r\n\r\n");
-            let _ = send.send(raw);
-            if !complete {
+                thread::sleep(delay);
+                if let Err(error) = stream.write_all(&response).and_then(|()| stream.flush()) {
+                    eprintln!(
+                        "CWG_WINHTTP_FIXTURE_WRITE_ERROR kind={:?} win32={:?}",
+                        error.kind(),
+                        error.raw_os_error()
+                    );
+                    return;
+                }
+                // Explicit FIN before releasing the owned socket; do not rely on
+                // an implicit close while the client is still consuming the body.
+                if let Err(error) = stream.shutdown(Shutdown::Write) {
+                    eprintln!(
+                        "CWG_WINHTTP_FIXTURE_SHUTDOWN_ERROR kind={:?} win32={:?}",
+                        error.kind(),
+                        error.raw_os_error()
+                    );
+                    return;
+                }
+                // The synchronous request closes its handles before the test joins
+                // this worker. Wait for peer close, bounded by the read timeout.
+                let mut trailing = [0u8; 1];
+                if let Ok(count) = stream.read(&mut trailing) {
+                    assert_eq!(
+                        count, 0,
+                        "fixture GET must not contain trailing input; first byte={:02x}",
+                        trailing[0]
+                    );
+                }
                 return;
-            }
-            thread::sleep(delay);
-            if let Err(error) = stream.write_all(&response).and_then(|()| stream.flush()) {
-                eprintln!(
-                    "CWG_WINHTTP_FIXTURE_WRITE_ERROR kind={:?} win32={:?}",
-                    error.kind(),
-                    error.raw_os_error()
-                );
-                return;
-            }
-            // Explicit FIN before releasing the owned socket; do not rely on
-            // an implicit close while the client is still consuming the body.
-            if let Err(error) = stream.shutdown(Shutdown::Write) {
-                eprintln!(
-                    "CWG_WINHTTP_FIXTURE_SHUTDOWN_ERROR kind={:?} win32={:?}",
-                    error.kind(),
-                    error.raw_os_error()
-                );
-                return;
-            }
-            // The synchronous request closes its handles before the test joins
-            // this worker. Wait for peer close, bounded by the read timeout.
-            let mut trailing = [0u8; 1];
-            if let Ok(count) = stream.read(&mut trailing) {
-                assert_eq!(
-                    count, 0,
-                    "fixture GET must not contain trailing input; first byte={:02x}",
-                    trailing[0]
-                );
             }
         });
         (address, receive, worker)
@@ -791,9 +797,14 @@ mod tests {
         worker.join().unwrap();
         assert_eq!(outcome.result.as_ref().unwrap(), b"{\"fixture\":true}");
         closed(&outcome, 3);
-        let headers = String::from_utf8(capture.recv().unwrap())
-            .unwrap()
-            .to_ascii_lowercase();
+        let headers = String::from_utf8(
+            capture
+                .into_iter()
+                .find(|raw| raw.ends_with(b"\r\n\r\n"))
+                .expect("one complete fixture request"),
+        )
+        .unwrap()
+        .to_ascii_lowercase();
         assert!(headers.starts_with("get /repos/fixture/repo http/1.1"));
         assert!(!headers.contains("authorization:"));
         assert!(!headers.contains("cookie:"));
