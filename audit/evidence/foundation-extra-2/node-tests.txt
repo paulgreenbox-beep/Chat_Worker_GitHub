@@ -1,0 +1,31 @@
+command: node --test audit/tooling.test.mjs
+CARGO_NET_OFFLINE=true
+exit_code: 0
+stdout:
+✔ new attempts reject repeated and incomplete destinations without replacing bytes (359.1289ms)
+✔ existing non-directory parent is refused (295.8741ms)
+✔ existing symlink/junction parent is refused before evidence writes (311.1118ms)
+﹣ exclusive artifact write cannot follow a pre-existing file link (329.7739ms) # Windows refused fixture file-link creation: EPERM
+✔ stable committed scoped inputs pass simulated gates and retain test counts (1201.5467ms)
+✔ source mutation during otherwise-successful gates makes final evidence fail (1307.2201ms)
+✔ new source input added during gates is part of the failing after-inventory (1356.0598ms)
+✔ HEAD change during gates invalidates the source identity (1427.4173ms)
+✔ uncommitted Cargo config, toolchain, wrapper and audit tools block final gates (6193.6166ms)
+✔ profile/compiler environment is hashed and changes invalidate the run (1275.0382ms)
+✔ resolved environment wrapper bytes and external Cargo config are fingerprinted (1234.6742ms)
+✔ successful command without observed test summaries is not test PASS (1325.5632ms)
+✔ Windows casing and JSON escaping cannot bypass path redaction/scan (1.118ms)
+✔ separate source review attempts preserve historical and prior artifacts (2315.5407ms)
+✔ source review records overall failure separately from successful metadata (1311.0361ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 14
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 1
+ℹ todo 0
+ℹ duration_ms 20333.9314
+
+stderr:
+
+error: null

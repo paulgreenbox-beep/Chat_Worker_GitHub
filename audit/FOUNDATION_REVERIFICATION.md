@@ -15,7 +15,7 @@ revisions; no earlier PASS is substituted for this run.
 | Requested baseline and freshly fetched main | `a409120bbafeaefd7ad7569b7d5704e2ad6122d5` |
 | Existing PR #1 head freshly built before new changes | `a7aa73858a85620f4ca10f09fcf75d86186f662c` |
 | New tests and status pre-fix regression | `1d90e701209ba0be7e46d1c8445016851e946f9e` |
-| Final checked implementation | `3ddf7088b7780d1e97732a534c873887aa361f35` |
+| Final checked implementation | `34132daff82066dbe76bf89e3ec4f6b8e81084d9` |
 
 Main still matched the requested baseline, so there was no newer main delta to
 integrate. Work uses the existing `codex/cwg-build-test-audit` branch and Draft
@@ -201,41 +201,47 @@ than claiming a toolchain pin which the source does not provide.
 
 ## Final corrected-source verification
 
-Final implementation SHA: `3ddf7088b7780d1e97732a534c873887aa361f35`. [Seven-gate summary](evidence/final-5/summary.json): overall PASS, exit 0, scoped inputs matched committed HEAD and before/after fingerprints had no recorded drift.
+Final implementation/scoped-input SHA: `34132daff82066dbe76bf89e3ec4f6b8e81084d9`. [Seven-gate summary](evidence/final-6/summary.json): overall PASS, exit 0; committed scoped inputs and before/after fingerprints matched. Rust production code is unchanged from the earlier successful `3ddf7088b7780d1e97732a534c873887aa361f35` run; the last input change explicitly preserves native platform receipt CRLF in Git whitespace checks.
 
 | Проверка | Результат | Доказательство |
 |---|---|---|
-| Cargo metadata | PASS | `cargo metadata --format-version 1`, exit 0; [log](evidence/final-5/metadata.txt); SHA-256 `95145d6d940325da76e172e89cdbb7b83374dc7aa47167ad3d48bb94482c6036` |
-| Cargo fmt | PASS | `cargo fmt --all -- --check`, exit 0; [log](evidence/final-5/fmt.txt); SHA-256 `5cdce237defd66423dbb2fbadd1e34cd93f1c84babff4222ba476cc7a5fcc0fe` |
-| Cargo check | PASS | `cargo check --workspace --all-targets`, exit 0; [log](evidence/final-5/check.txt); SHA-256 `4cdf89675764ee226d959967376d9f3c45cc341cbdf520f68cea57e87993ad6a` |
-| Cargo test | PASS | `cargo test --workspace --all-targets`, exit 0; **70 PASS / 0 FAIL / 0 ignored**; [log](evidence/final-5/test.txt); SHA-256 `6470d52d61fced6aae26d18f4377f5f429fd2d39b167f950591c3af03a6e333d` |
-| Cargo clippy | PASS | `cargo clippy --workspace --all-targets -- -D warnings`, exit 0; [log](evidence/final-5/clippy.txt); SHA-256 `fa8aa1fea7a23f4f68b7313109c66de5fbe39e6c3781a2c599272faffb2db678` |
-| Debug build | PASS | `cargo build --workspace`, exit 0; [log](evidence/final-5/debug.txt); SHA-256 `aa9c633bd76cbb8042950b2490263a503e08f3b8cce47981f8f92f7235de9c41` |
-| Release build | PASS | `cargo build --workspace --release`, exit 0; [log](evidence/final-5/release.txt); SHA-256 `5a7ed9128d62e047914e55cc38e6abb12d81bedb3671ba5b9381a681397f04c6` |
-| Security review | **ISSUES_FOUND — P3 wire ambiguity corrected** | Source review, actual pre-/post-fix regression and independent review; no known additional P0/P1 in this scope. No blanket SECURITY PASS. |
-| Locked/offline confirmation | PASS | `cargo test --workspace --all-targets --locked --offline`, exit 0; 70 PASS / 0 FAIL / 0 ignored; [log](evidence/foundation-extra/locked-offline.txt); SHA-256 `66dfc81aa6ae63cce44e41cc3e63617b080ea93c238d6a2fcfce68480832daa6` |
-| Audit tooling tests | **14 PASS / 1 NOT_RUN** | `node --test audit/tooling.test.mjs`, exit 0; 14 PASS / 0 FAIL / 1 NOT_RUN; [log](evidence/foundation-extra/node-tests.txt); SHA-256 `d67d12f7d77d06a10ee0ad38e1be3f75e134aa3a183e00680e79cde457eb854f` |
-| Diff check | PASS | `git diff --check`, exit 0; [log](evidence/foundation-extra/diff-check.txt); SHA-256 `06295aaf402ff039ca4149210174f93718015f2ac5d30749d2cc9bd9dac5c5a1` |
-| Diff check | PASS | `git diff --check a409120bbafeaefd7ad7569b7d5704e2ad6122d5 HEAD`, exit 0; [log](evidence/foundation-extra/base-diff-check.txt); SHA-256 `4724369809518e1c00ae18c76de675db8995f07f7a5b6ecea45cf43f4b7fc569` |
-| Native Windows version | PASS | `cmd /c ver`, exit 0; [log](evidence/foundation-extra/platform.txt); SHA-256 `556bf6790a01b33be814616aa28d6e0f372dea404eb4dd1e852b96c92270abed` |
-| Dependency/source/publication observations | PASS within scan scope | `audit/review.mjs::runReview({phase: "review-4"})` invoked through Node, exit 0; locked offline metadata, zero cycles and zero pattern findings. [Result](evidence/foundation-review-4/source-review.json) |
-| Test retention | PASS | All 67 starting test names occur in the 70-test successful run; all 7 previous integration test files and both unit-test modules are byte-identical to the starting PR head. [Receipt](evidence/foundation-extra/retention.json) |
+| Cargo metadata | PASS | `cargo metadata --format-version 1`, exit 0; [log](evidence/final-6/metadata.txt); SHA-256 `95145d6d940325da76e172e89cdbb7b83374dc7aa47167ad3d48bb94482c6036` |
+| Cargo fmt | PASS | `cargo fmt --all -- --check`, exit 0; [log](evidence/final-6/fmt.txt); SHA-256 `5cdce237defd66423dbb2fbadd1e34cd93f1c84babff4222ba476cc7a5fcc0fe` |
+| Cargo check | PASS | `cargo check --workspace --all-targets`, exit 0; [log](evidence/final-6/check.txt); SHA-256 `c667eeb6d519cf109e9ee13e16948bb653362034c40f3280bbe334f3d529f8c6` |
+| Cargo test | PASS | `cargo test --workspace --all-targets`, exit 0; **70 PASS / 0 FAIL / 0 ignored**; [log](evidence/final-6/test.txt); SHA-256 `b8a2bc06364d05ae59b2ccbdb6d8fd9af80d8da2b7a205b1c008f9f0c763bda1` |
+| Cargo clippy | PASS | `cargo clippy --workspace --all-targets -- -D warnings`, exit 0; [log](evidence/final-6/clippy.txt); SHA-256 `c02f052c51ba95d7e3c678ea9c3d5c3fd660eb61a75e975f757c7cf4426c0b19` |
+| Debug build | PASS | `cargo build --workspace`, exit 0; [log](evidence/final-6/debug.txt); SHA-256 `73145903756c666185af47c5d96769397daf06c53faf47b1687160bd1e23c017` |
+| Release build | PASS | `cargo build --workspace --release`, exit 0; [log](evidence/final-6/release.txt); SHA-256 `a3868618a0cc131f04c4bdcf9decc0192c791bdc0280a49fd46090d7daeef385` |
+| Security review | **ISSUES_FOUND — P3 status ambiguity corrected** | Independent source review plus pre-/post-fix regression; no known additional P0/P1 identified. Not a blanket SECURITY PASS. |
+| Locked/offline confirmation | PASS | `cargo test --workspace --all-targets --locked --offline`, exit 0; 70 PASS / 0 FAIL / 0 ignored; [log](evidence/foundation-extra-2/locked-offline.txt); SHA-256 `03ddc811f02bf4d2252d59f74c2eb3a46ec5ef47e26c228dece627837e8d8c8c` |
+| Audit tooling tests | **14 PASS / 1 NOT_RUN** | `node --test audit/tooling.test.mjs`, exit 0; 14 PASS / 0 FAIL / 1 NOT_RUN; [log](evidence/foundation-extra-2/node-tests.txt); SHA-256 `d6e4396e8aaa72674d3afada52a277e219c165a5d3982b2d5dee81be8cc6327b` |
+| Diff check | PASS | `git diff --check`, exit 0; [log](evidence/foundation-extra-2/diff-check.txt); SHA-256 `06295aaf402ff039ca4149210174f93718015f2ac5d30749d2cc9bd9dac5c5a1` |
+| Diff check | PASS | `git diff --check a409120bbafeaefd7ad7569b7d5704e2ad6122d5 HEAD`, exit 0; [log](evidence/foundation-extra-2/base-diff-check.txt); SHA-256 `4724369809518e1c00ae18c76de675db8995f07f7a5b6ecea45cf43f4b7fc569` |
+| Windows platform | PASS | `cmd /c ver`, exit 0; [log](evidence/foundation-extra-2/platform.txt); SHA-256 `556bf6790a01b33be814616aa28d6e0f372dea404eb4dd1e852b96c92270abed` |
+| Source/dependency/publication observations | PASS within scan scope | `audit/review.mjs::runReview({phase:"review-6"})` through Node, exit 0; zero cycles/findings. [Receipt](evidence/foundation-review-6/source-review.json) |
+| Test retention | PASS | 67 starting names retained; seven previous integration files and two unit modules unchanged. [Receipt](evidence/foundation-extra-2/retention.json) |
 
-Rust and Cargo versions above were re-read by the final runner; Node is `v24.22.1`. The Node suite has 15 scenarios: 14 actually ran and passed, while the file-symlink fixture is **NOT_RUN** because Windows returned `EPERM`. The directory-junction test ran and passed. No privilege/developer-mode/security setting was changed. Node tests use explicitly labelled simulated Cargo callbacks to test the evidence runner; they are not Rust execution evidence.
+Protocol has 32 and Router 38 tests: **70 distinct Rust scenarios**, repeated successfully offline. Node `v24.22.1` ran 14 audit scenarios; the fifteenth is **NOT_RUN** because Windows returned `EPERM` for a file-symlink fixture. Directory-junction coverage ran and passed. No OS privilege/developer-mode setting was altered. The Node unit suite explicitly simulates Cargo outputs to test audit logic; it is not Rust execution evidence.
 
-The initial main unit scenarios remain intact. Protocol now has 32 Rust tests and Router 38. No test was removed, weakened or ignored to obtain these Rust PASS results. The additional repeat of all 70 tests used `--locked --offline`; no dependency download or new software installation was needed.
+The earlier [final-5](evidence/final-5/summary.json) and [supplement](evidence/foundation-extra/summary.json) remain truthful results at `3ddf7088b7780d1e97732a534c873887aa361f35`. The later publication check at `47332799c6e8742d8b902f9adfd6190c2fa849ed` found native CRLF receipt lines: [recorded FAIL, exit 2](evidence/publication-crlf-before/summary.json). That FAIL is preserved. A narrowly scoped `cr-at-eol` attribute for native platform transcripts keeps their bytes intact while other whitespace checks remain enabled; current base-to-head diff checks pass. No message validation, test assertion or Rust lint was relaxed.
 
 ## Evidence hashes and historical boundaries
 
 | Evidence | Saved file SHA-256 |
 |---|---|
-| [evidence/final-4/summary.json](evidence/final-4/summary.json) | `758165698b0f25d69a28bdf84b92c6a3e6c9ec8c275e9ac3fe3f04267328ff57` |
-| [evidence/status-before/summary.json](evidence/status-before/summary.json) | `7cb633e8c5c35c05dc4d0ec1ea6201f0ae29510c689b65c0fbb7f9f76b0a06a1` |
-| [evidence/status-after/summary.json](evidence/status-after/summary.json) | `de361e6036d34af93a7f7b9d1a1f46abf6a505ff3d9864d40ac533cd72e76bcd` |
-| [evidence/final-5/summary.json](evidence/final-5/summary.json) | `d4a8e8cf5dbb0f1c9fa967a2c85b347b9c065fc0534ea368ddac18dda96e5754` |
-| [evidence/foundation-extra/summary.json](evidence/foundation-extra/summary.json) | `c62794903042aa380b355f7d3ea3cc3685b8588a5f5bd37df45fa9fdf2ee1565` |
-| [evidence/foundation-extra/retention.json](evidence/foundation-extra/retention.json) | `eb47bbde0632c2a4f7dc7dd5cffc09c892b98d7ac3dbfb3f41dd1baafb960985` |
-| [evidence/foundation-review-4/source-review.json](evidence/foundation-review-4/source-review.json) | `7adf5fcb5ddbc293da66c9aa04d51facc7fdadc4e98479b9a1896171c2612176` |
+| [final-4/summary.json](evidence/final-4/summary.json) | `758165698b0f25d69a28bdf84b92c6a3e6c9ec8c275e9ac3fe3f04267328ff57` |
+| [status-before/summary.json](evidence/status-before/summary.json) | `7cb633e8c5c35c05dc4d0ec1ea6201f0ae29510c689b65c0fbb7f9f76b0a06a1` |
+| [status-after/summary.json](evidence/status-after/summary.json) | `de361e6036d34af93a7f7b9d1a1f46abf6a505ff3d9864d40ac533cd72e76bcd` |
+| [final-5/summary.json](evidence/final-5/summary.json) | `d4a8e8cf5dbb0f1c9fa967a2c85b347b9c065fc0534ea368ddac18dda96e5754` |
+| [foundation-extra/summary.json](evidence/foundation-extra/summary.json) | `c62794903042aa380b355f7d3ea3cc3685b8588a5f5bd37df45fa9fdf2ee1565` |
+| [foundation-extra/retention.json](evidence/foundation-extra/retention.json) | `eb47bbde0632c2a4f7dc7dd5cffc09c892b98d7ac3dbfb3f41dd1baafb960985` |
+| [foundation-review-4/source-review.json](evidence/foundation-review-4/source-review.json) | `7adf5fcb5ddbc293da66c9aa04d51facc7fdadc4e98479b9a1896171c2612176` |
+| [foundation-review-5/source-review.json](evidence/foundation-review-5/source-review.json) | `11f8293447eacda665dbc95aa52b0ec470c30138ea8372fddd99421fd9e6bc94` |
+| [final-6/summary.json](evidence/final-6/summary.json) | `ff85773f37d2a5c2025391dcbb8496cc260e0a34a36715baa631208dd1e12cbe` |
+| [foundation-extra-2/summary.json](evidence/foundation-extra-2/summary.json) | `823a5fc533b74edf4a091627c8ba532bb3d99e812d8362fc1e1ae074ac7e7f7f` |
+| [foundation-extra-2/retention.json](evidence/foundation-extra-2/retention.json) | `2289caec43578c5e14aaa779f9913bec83f63d9d2778f5a2a9b40447e566de04` |
+| [foundation-review-6/source-review.json](evidence/foundation-review-6/source-review.json) | `0134fdfbae1c0e6b02a8772b361421cfbd14632378936edeb47ebd6e1d216fa7` |
+| [publication-crlf-before/summary.json](evidence/publication-crlf-before/summary.json) | `1eef7c48af60839b3fde119dc0ec2f99f65fe0d9621c2ddd7b770db37f9f8106` |
 
 Each summary records exact source identity, actual commands/exits/counts and log
 hashes. JSON-envelope transcripts preserve diagnostic whitespace; their file hash
@@ -277,7 +283,7 @@ The implementation/test/tool changes and documentation updates against the start
 - `README.md`
 - `doc/testing.md`
 - `audit/FOUNDATION_REVERIFICATION.md`
-- Fresh evidence under `audit/evidence/final-4/`, `status-before/`, `status-after/`, `final-5/`, `foundation-extra/`, `foundation-review-4/` and `foundation-review-5/`. Individual paths and hashes are in the [publication inventory](evidence/foundation-extra/publication-manifest.json).
+- Fresh evidence under `audit/evidence/final-4/`, `status-before/`, `status-after/`, `final-5/`, `foundation-extra/`, `foundation-review-4/` and `foundation-review-5/`. Individual paths and hashes are in the [publication inventory](evidence/foundation-extra-2/publication-manifest.json).
 
 Earlier reports and evidence are preserved. Later report/evidence-only commits
 must distinguish their publication HEAD from the exact implementation SHA that
@@ -290,3 +296,5 @@ Use the recorded implementation SHA and Rust/Cargo versions. Set process-local `
 The completed publication set was also checked by `audit/review.mjs::runReview({phase: "review-5"})` through Node: exit 0, zero findings/cycles and stable committed scoped inputs. See the [final scan receipt](evidence/foundation-review-5/source-review.json).
 
 Source-review captures retain their actual logical phase names `review-4`/`review-5` in JSON. Their unchanged bytes are archived under `foundation-review-4`/`foundation-review-5` to avoid colliding with receipts from other CWG branches; the captures are not reruns or renamed source identities.
+
+The current publication inventory supersedes the earlier inventory snapshot in `foundation-extra/` without rewriting it; the earlier snapshot belongs to publication commit `47332799c6e8742d8b902f9adfd6190c2fa849ed`. Current additional evidence is under `final-6/`, `foundation-extra-2/`, `foundation-review-6/` and `publication-crlf-before/`. The reviewed source change after the protocol fix is only `.gitattributes`; no dependency or Router production change was introduced.
