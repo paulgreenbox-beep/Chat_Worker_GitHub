@@ -42,7 +42,8 @@ extensions remain bounded data; duplicate keys, including nested unknown keys,
 are refused. Typed security objects must be named-field objects, not positional
 arrays. Routes and authorized numeric senders come from private local config.
 Production WinHTTP uses a fixed GitHub HTTPS host, explicit TLS 1.2, no proxy,
-redirects or automatic credentials, one connection attempt, bounded reads and
+redirects or automatic credentials, one connection attempt, private session
+transport state without global cross-session pooling, bounded reads and
 checked handle cleanup. Cleanup or uncertain persistence never means success.
 
 `CWG_State` replays the existing Router under a native file lock, persists
