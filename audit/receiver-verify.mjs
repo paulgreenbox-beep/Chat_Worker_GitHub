@@ -27,7 +27,7 @@ const regressions = {
   commit: ['test', '-p', 'cwg-state', '--lib', '--locked', '--offline', 'commit_tests', '--', '--nocapture'],
   workspace: ['test', '--workspace', '--all-targets', '--locked', '--offline', '--no-fail-fast'],
   fixture: ['test', '-p', 'cwg-state', '--test', 'windows_paths', '--locked', '--offline', 'fixture_fence_', '--', '--nocapture'],
-  server: ['test', '-p', 'cwg-github', '--bin', 'cwg-github', '--locked', '--offline', 'audit_fixture_refuses_an_interrupted', '--', '--nocapture'],
+  server: ['test', '-p', 'cwg-github', '--bin', 'cwg-github', '--locked', '--offline', 'audit_fixture_', '--', '--nocapture'],
   pool: ['test', '-p', 'cwg-github', '--bin', 'cwg-github', '--locked', '--offline', 'audit_sessions_refuse_global', '--', '--nocapture'],
 };
 const regression = phase.startsWith('receiver-regression-') ? regressions[phase.match(/^receiver-regression-([a-z]+)/)[1]] : null;

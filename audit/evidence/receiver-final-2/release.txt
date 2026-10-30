@@ -1,0 +1,11 @@
+command: cargo build --workspace --release --locked
+CARGO_NET_OFFLINE=true
+exit_code: 0
+stdout:
+
+stderr:
+   Compiling cwg-state v0.1.0 (<workspace>\CWG_State)
+   Compiling cwg-github v0.1.0 (<workspace>\CWG_GitHub)
+    Finished `release` profile [optimized] target(s) in 2.43s
+
+error: null

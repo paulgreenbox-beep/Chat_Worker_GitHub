@@ -594,6 +594,28 @@ mod tests {
         );
     }
     #[test]
+    fn audit_fixture_survives_empty_probe_before_the_real_request() {
+        use std::net::TcpStream;
+        let (address, capture, worker) = server(response("200 OK", b"{}", ""), Duration::ZERO);
+        let probe = TcpStream::connect(address).unwrap();
+        probe.shutdown(Shutdown::Both).unwrap();
+        drop(probe);
+        assert!(
+            capture
+                .recv_timeout(Duration::from_secs(2))
+                .unwrap()
+                .is_empty()
+        );
+        let outcome = fixture_get(address, Instant::now() + Duration::from_secs(2));
+        worker.join().unwrap();
+        assert_eq!(
+            outcome.result.as_deref(),
+            Ok(b"{}".as_slice()),
+            "a closed connection without an HTTP request must not consume the fixture transaction"
+        );
+        closed(&outcome, 3);
+    }
+    #[test]
     fn audit_fixture_refuses_an_interrupted_http_request_without_a_success_response() {
         use std::net::TcpStream;
         let (address, capture, worker) = server(response("200 OK", b"{}", ""), Duration::ZERO);
