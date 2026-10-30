@@ -1,0 +1,10 @@
+command: cargo build --workspace --release
+exit_code: 0
+stdout:
+
+stderr:
+   Compiling cwg-protocol v0.1.0 (<workspace>\CWG_Protocol)
+   Compiling cwg-router v0.1.0 (<workspace>\CWG_Router)
+    Finished `release` profile [optimized] target(s) in 0.72s
+
+error: null

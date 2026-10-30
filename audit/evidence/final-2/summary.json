@@ -1,0 +1,120 @@
+{
+  "source_sha": "7f9dff0a09717abec73118f45b67c1c733122e26",
+  "phase": "final-2",
+  "started_utc": "2026-10-30T13:39:17.912Z",
+  "rust_inputs_match_head": true,
+  "platform": "win32",
+  "architecture": "x64",
+  "os_release": "10.0.26300",
+  "rustc": {
+    "exit_code": 0,
+    "stdout": "rustc 1.97.1 (8bab26f4f 2026-07-14)\nbinary: rustc\ncommit-hash: 8bab26f4f68e0e26f0bb7960be334d5b520ea452\ncommit-date: 2026-07-14\nhost: x86_64-pc-windows-msvc\nrelease: 1.97.1\nLLVM version: 22.1.6\n",
+    "stderr": "",
+    "error": null
+  },
+  "cargo": {
+    "exit_code": 0,
+    "stdout": "cargo 1.97.1 (c980f4866 2026-06-30)\n",
+    "stderr": "",
+    "error": null
+  },
+  "inputs_before": {
+    "CWG_Protocol/Cargo.toml": "2c93255db2082d821cda48f9a60d2e91050165624135cc49ac97a4802f90f343",
+    "CWG_Protocol/src/lib.rs": "f1b96446066645732e9d611e25d36d2d809a4c2218a00632896556d42d90fb03",
+    "CWG_Protocol/tests/validation.rs": "dfb58d316b9d6ff8c1f120103db5c7ea192079813dee1e7f0930cdd7dccb187a",
+    "CWG_Router/Cargo.toml": "2306c7255ea15ab31ecadd931d6c328e34a8fe9a2e4b62535294b3e0d2a05c6a",
+    "CWG_Router/src/lib.rs": "5a30ac3c0f95111b71d23f1f4e04461442971ae5bb4c349b6dc31fe093a30c1b",
+    "CWG_Router/tests/audit_regressions.rs": "780c7f1baaa95579d37cac8b6b6f202b09d72c9cf26441e7bcc3442f5bd61982",
+    "CWG_Router/tests/routing.rs": "d14490787b69e533f7f7697ca5b132ad4e679c4b1df49c2c8e3a93974d13035c",
+    "Cargo.lock": "de20aef2c05bc29e5ce9da633f03fe7247e7daaae26a9b6de45b1ee7889bfc23",
+    "Cargo.toml": "26330dc65b7c2c132d2fcca49d39746598fa0a0b6eae0b24a76ec326e4655c15"
+  },
+  "checks": [
+    {
+      "command": "cargo metadata --format-version 1",
+      "exit_code": 0,
+      "status": "PASS",
+      "tests": null,
+      "log": "metadata.txt",
+      "log_encoding": "plain-text",
+      "transcript_sha256": "143fb6e4d64b029b018b7c21c21000bf3e8d3ef398750bb77b5fdfb47aa3de06",
+      "log_sha256": "143fb6e4d64b029b018b7c21c21000bf3e8d3ef398750bb77b5fdfb47aa3de06"
+    },
+    {
+      "command": "cargo fmt --all -- --check",
+      "exit_code": 0,
+      "status": "PASS",
+      "tests": null,
+      "log": "fmt.txt",
+      "log_encoding": "plain-text",
+      "transcript_sha256": "5cdce237defd66423dbb2fbadd1e34cd93f1c84babff4222ba476cc7a5fcc0fe",
+      "log_sha256": "5cdce237defd66423dbb2fbadd1e34cd93f1c84babff4222ba476cc7a5fcc0fe"
+    },
+    {
+      "command": "cargo check --workspace --all-targets",
+      "exit_code": 0,
+      "status": "PASS",
+      "tests": null,
+      "log": "check.txt",
+      "log_encoding": "plain-text",
+      "transcript_sha256": "08f4d9dd56cf107e441e3ddc5b2f1b0e3741c8faae230885f50c39b94e238350",
+      "log_sha256": "08f4d9dd56cf107e441e3ddc5b2f1b0e3741c8faae230885f50c39b94e238350"
+    },
+    {
+      "command": "cargo test --workspace --all-targets",
+      "exit_code": 0,
+      "status": "PASS",
+      "tests": {
+        "passed": 38,
+        "failed": 0,
+        "ignored": 0
+      },
+      "log": "test.txt",
+      "log_encoding": "plain-text",
+      "transcript_sha256": "7d882bed46f91980cf0869e6215f524c6db73da034c642b3058f9ee87aec7ad8",
+      "log_sha256": "7d882bed46f91980cf0869e6215f524c6db73da034c642b3058f9ee87aec7ad8"
+    },
+    {
+      "command": "cargo clippy --workspace --all-targets -- -D warnings",
+      "exit_code": 0,
+      "status": "PASS",
+      "tests": null,
+      "log": "clippy.txt",
+      "log_encoding": "plain-text",
+      "transcript_sha256": "c02f052c51ba95d7e3c678ea9c3d5c3fd660eb61a75e975f757c7cf4426c0b19",
+      "log_sha256": "c02f052c51ba95d7e3c678ea9c3d5c3fd660eb61a75e975f757c7cf4426c0b19"
+    },
+    {
+      "command": "cargo build --workspace",
+      "exit_code": 0,
+      "status": "PASS",
+      "tests": null,
+      "log": "debug.txt",
+      "log_encoding": "plain-text",
+      "transcript_sha256": "aa9c633bd76cbb8042950b2490263a503e08f3b8cce47981f8f92f7235de9c41",
+      "log_sha256": "aa9c633bd76cbb8042950b2490263a503e08f3b8cce47981f8f92f7235de9c41"
+    },
+    {
+      "command": "cargo build --workspace --release",
+      "exit_code": 0,
+      "status": "PASS",
+      "tests": null,
+      "log": "release.txt",
+      "log_encoding": "plain-text",
+      "transcript_sha256": "4346e3299cc6d41c5f48298d01b17cc900b328a958b5b05ec85093a3865d41ed",
+      "log_sha256": "4346e3299cc6d41c5f48298d01b17cc900b328a958b5b05ec85093a3865d41ed"
+    }
+  ],
+  "finished_utc": "2026-10-30T13:39:19.359Z",
+  "inputs_after": {
+    "CWG_Protocol/Cargo.toml": "2c93255db2082d821cda48f9a60d2e91050165624135cc49ac97a4802f90f343",
+    "CWG_Protocol/src/lib.rs": "f1b96446066645732e9d611e25d36d2d809a4c2218a00632896556d42d90fb03",
+    "CWG_Protocol/tests/validation.rs": "dfb58d316b9d6ff8c1f120103db5c7ea192079813dee1e7f0930cdd7dccb187a",
+    "CWG_Router/Cargo.toml": "2306c7255ea15ab31ecadd931d6c328e34a8fe9a2e4b62535294b3e0d2a05c6a",
+    "CWG_Router/src/lib.rs": "5a30ac3c0f95111b71d23f1f4e04461442971ae5bb4c349b6dc31fe093a30c1b",
+    "CWG_Router/tests/audit_regressions.rs": "780c7f1baaa95579d37cac8b6b6f202b09d72c9cf26441e7bcc3442f5bd61982",
+    "CWG_Router/tests/routing.rs": "d14490787b69e533f7f7697ca5b132ad4e679c4b1df49c2c8e3a93974d13035c",
+    "Cargo.lock": "de20aef2c05bc29e5ce9da633f03fe7247e7daaae26a9b6de45b1ee7889bfc23",
+    "Cargo.toml": "26330dc65b7c2c132d2fcca49d39746598fa0a0b6eae0b24a76ec326e4655c15"
+  }
+}

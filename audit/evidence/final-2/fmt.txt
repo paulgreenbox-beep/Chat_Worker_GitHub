@@ -1,0 +1,7 @@
+command: cargo fmt --all -- --check
+exit_code: 0
+stdout:
+
+stderr:
+
+error: null

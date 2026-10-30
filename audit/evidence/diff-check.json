@@ -1,0 +1,20 @@
+{
+  "source_sha": "7f9dff0a09717abec73118f45b67c1c733122e26",
+  "checks": [
+    {
+      "command": "git diff --check",
+      "exit_code": 0,
+      "output": ""
+    },
+    {
+      "command": "git diff origin/main --check",
+      "exit_code": 0,
+      "output": ""
+    },
+    {
+      "command": "git diff --cached --check",
+      "exit_code": 0,
+      "output": ""
+    }
+  ]
+}
