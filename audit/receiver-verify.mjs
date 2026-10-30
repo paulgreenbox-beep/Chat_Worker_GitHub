@@ -24,7 +24,7 @@ const regressions = {
   winhttp: ['test', '-p', 'cwg-github', '--bin', 'cwg-github', '--locked', '--offline', 'audit_', '--', '--nocapture'],
   retained: ['test', '-p', 'cwg-state', '--test', 'retained_access', '--locked', '--offline', 'security_regression_', '--', '--nocapture'],
   commit: ['test', '-p', 'cwg-state', '--lib', '--locked', '--offline', 'commit_tests', '--', '--nocapture'],
-  workspace: ['test', '--workspace', '--all-targets', '--locked', '--offline'],
+  workspace: ['test', '--workspace', '--all-targets', '--locked', '--offline', '--no-fail-fast'],
 };
 const regression = phase.startsWith('receiver-regression-') ? regressions[phase.match(/^receiver-regression-([a-z]+)/)[1]] : null;
 const gates = regression ? [['test', 'cargo', regression]] : [

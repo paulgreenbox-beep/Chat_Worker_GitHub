@@ -621,7 +621,7 @@ mod tests {
                 ),
                 0
             );
-            assert_eq!(GetLastError(), 12009); // ERROR_WINHTTP_INVALID_OPTION
+            assert_eq!(GetLastError(), 87); // ERROR_INVALID_PARAMETER: set-only option
             let requested = session_options()
                 .iter()
                 .find(|(option, _)| *option == OPTION_SECURE_PROTOCOLS)
