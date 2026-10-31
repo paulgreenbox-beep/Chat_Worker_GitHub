@@ -441,6 +441,46 @@ impl Store {
             ))
         })
     }
+    /// Read one message in the exact registered binding without acknowledging it.
+    pub fn get_message(&self, binding: &Binding, id: &str) -> Result<Option<Item>> {
+        if !identifier(id) {
+            return Err("MESSAGE_ID_INVALID");
+        }
+        self.transact(|v| {
+            v.binding(binding)?;
+            let found = v.messages.get(id)
+                .filter(|row| row.binding_id == binding.id)
+                .map(|row| Item {
+                    binding_id: row.binding_id.clone(),
+                    generation: row.generation,
+                    message: row.message.clone(),
+                    status: v.router.state(&MessageKey::from(&row.message))
+                        .expect("replayed message"),
+                });
+            Ok((found, None))
+        })
+    }
+
+    /// Bounded, binding-scoped page; read-only even after an uncertain sync.
+    pub fn inbox_page(&self, binding: &Binding, offset: usize, limit: usize) -> Result<Vec<Item>> {
+        if !(1..=100).contains(&limit) || offset > MAX_MESSAGES {
+            return Err("INBOX_PAGE_INVALID");
+        }
+        self.transact(|v| {
+            v.binding(binding)?;
+            let rows = v.order.iter().filter_map(|id| {
+                let row = &v.messages[id];
+                (row.binding_id == binding.id).then(|| Item {
+                    binding_id: row.binding_id.clone(),
+                    generation: row.generation,
+                    message: row.message.clone(),
+                    status: v.router.state(&MessageKey::from(&row.message))
+                        .expect("replayed message"),
+                })
+            }).skip(offset).take(limit).collect();
+            Ok((rows, None))
+        })
+    }
     pub fn inbox(&self, binding: &Binding, limit: usize) -> Result<Vec<Item>> {
         if !(1..=100).contains(&limit) {
             return Err("INBOX_LIMIT");

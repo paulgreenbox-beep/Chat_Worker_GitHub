@@ -14,6 +14,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "cwg-mcp"
+version = "0.1.0"
+dependencies = [
+ "cwg-github",
+ "cwg-protocol",
+ "cwg-security",
+ "cwg-state",
+ "serde",
+ "serde_json",
+]
+[[package]]
 name = "cwg-protocol"
 version = "0.1.0"
 dependencies = [

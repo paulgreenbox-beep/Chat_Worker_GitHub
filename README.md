@@ -15,6 +15,8 @@ authority. No containers, VMs, model calls, automatic merge or installed service
 | CWG_Security | Bounded object-only JSON checks; Windows CNG HMAC; handle-based Windows ACL checks | Native results and exact SHA in the Windows audit below |
 | CWG_State | Bounded protected file-locked/fsynced inbox; persistent replay protection | Native subprocess/fault results in the Windows audit; power-loss durability NOT_VERIFIED |
 | CWG_GitHub | Foreground Windows receiver, fixed-host API reconciliation, local inbox CLI | Controlled-loopback receiver-to-inbox integration; live GitHub/Codex delivery NOT_RUN |
+| CWG_MCP | Scoped stdio inbox tools and non-authoritative local reports from PR #3 | WP-01B integrated source NOT_RUN; files/spec protection not yet qualified |
+| CWG_Worker | Trusted Codex App Server adapter | NOT_IMPLEMENTED |
 | CWG_MCP / CWG_Worker | Planned MCP and Codex adapter | NOT_IMPLEMENTED |
 | CWG_CheckBroker | Optional independent check integration | Disabled; not needed for ordinary messages |
 
@@ -48,6 +50,23 @@ checks on this new integrated HEAD are **NOT_RUN**. This remains source-only
 integration: there is no qualified Codex Adapter, MCP, GitHub Publisher or
 end-to-end delivery. See [WP-01A handoff](audit/WP01A_INTEGRATION.md).
 
+## WP-01B source integration (pending independent qualification)
+
+This branch merges PR #3 MCP source at `41e59503ba68bd9d5a7a9ca173c75aa2911d28c4` into the
+qualified WP-01A integration baseline `a4a4957c932a6431ce1acbe0e98fc786e9e76cfd`. The hardened
+State journal, Windows ACL, delivery aliases, strict Protocol and native
+regressions are retained. The MCP-scoped `get_message` / `inbox_page`
+read methods are added to the protected State transaction path.
+
+PR #3 alone had **127 Rust tests PASS**, but also rustfmt/Clippy failures
+and five reproduced MCP wire incompatibilities. These results are historical
+and cannot qualify this merged commit. The MCP filesystem boundaries and
+version-conformance improvements are separate source changes in this
+development workstream. Until all exact-SHA Windows checks pass, WP-01B
+remains **NOT_VERIFIED** and must not be treated as a trusted chat adapter.
+
+No live GitHub-to-Codex delivery, provider identity proof, publisher,
+automatic model execution, or CheckBroker is part of this integration.
 ## Receiver workflow
 
 An owner configures an exact numeric repository/owner/Issue → account/thread
