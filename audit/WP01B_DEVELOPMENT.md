@@ -31,3 +31,20 @@ Open independent qualification:
 
 Out of scope: real webhook, provider model, account/thread attestation,
 durable revocation, journal compaction, GitHub publisher, CheckBroker.
+
+## WP-01B follow-up source changes — NOT_RUN
+
+- Add `open_private_reports_journal` as a fixed-leaf held Windows handle
+  using the existing Security ACL policy, without new external packages.
+- Replace MCP config metadata-before-open with `read_private_config`.
+- Replace report journal symlink-before-open with protected native handles.
+- Add State `scoped_reads.rs` native pagination/no-ACK regressions.
+- Add MCP versioned wire tests, native protected-file tests and output limit.
+- Implement modern `ttlMs`/`cacheScope`, structured unsupported-version
+  `-32022` and corrected modern/legacy `ping`; fix Clippy nested conditional.
+- The incoming 127 PR #3 tests and all 220 WP-01A tests are historical
+  counts; expected new count must be discovered by native test execution.
+
+**Every Cargo gate, native protection and MCP conformance result on this
+new combined source is NOT_RUN.** Existing published evidence remains
+untouched. No publisher, model, thread authorization or real delivery.

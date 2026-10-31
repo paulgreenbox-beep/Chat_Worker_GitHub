@@ -1,5 +1,8 @@
 //! Stdio MCP host: one JSON-RPC object per bounded UTF-8 line, stdout only JSON.
 use cwg_mcp::{MAX_RPC_BYTES, Server};
+// One full serialized JSON-RPC reply, including duplicated text and structured
+// tool content. Covers the protocol's maximum valid 65,536-byte message body.
+const MAX_RPC_OUTPUT_BYTES: usize = 1024 * 1024;
 use std::{
     io::{self, BufRead, BufReader, Write},
     path::Path,
@@ -29,11 +32,20 @@ fn run() -> Result<(), &'static str> {
             break;
         };
         if let Some(reply) = server.handle_json(&line) {
-            serde_json::to_writer(&mut writer, &reply).map_err(|_| "MCP_OUTPUT_ERROR")?;
-            writer.write_all(b"\n").map_err(|_| "MCP_OUTPUT_ERROR")?;
-            writer.flush().map_err(|_| "MCP_OUTPUT_ERROR")?;
+            write_reply(&mut writer, &reply)?;
         }
     }
+    Ok(())
+}
+
+fn write_reply(writer: &mut impl Write, reply: &serde_json::Value) -> Result<(), &'static str> {
+    let encoded = serde_json::to_vec(reply).map_err(|_| "MCP_OUTPUT_ERROR")?;
+    if encoded.len() > MAX_RPC_OUTPUT_BYTES {
+        return Err("MCP_OUTPUT_SIZE");
+    }
+    writer.write_all(&encoded).map_err(|_| "MCP_OUTPUT_ERROR")?;
+    writer.write_all(b"\n").map_err(|_| "MCP_OUTPUT_ERROR")?;
+    writer.flush().map_err(|_| "MCP_OUTPUT_ERROR")?;
     Ok(())
 }
 
@@ -121,5 +133,19 @@ mod tests {
                 assert_eq!(read_line(&mut reader).unwrap_err().kind(), io::ErrorKind::InvalidData);
             }
         }
+    }
+
+    #[test]
+    fn exact_response_budget_is_enforced_after_json_escaping() {
+        let overhead = serde_json::to_vec(&serde_json::json!({"x":""})).unwrap().len();
+        let exact = serde_json::json!({"x":"a".repeat(MAX_RPC_OUTPUT_BYTES - overhead)});
+        let mut bytes = Vec::new();
+        write_reply(&mut bytes, &exact).unwrap();
+        assert_eq!(bytes.len(), MAX_RPC_OUTPUT_BYTES + 1);
+        assert_eq!(bytes.last(), Some(&b'\n'));
+        let too_large = serde_json::json!({"x":"a".repeat(MAX_RPC_OUTPUT_BYTES - overhead + 1)});
+        let mut output = Vec::new();
+        assert_eq!(write_reply(&mut output, &too_large), Err("MCP_OUTPUT_SIZE"));
+        assert!(output.is_empty());
     }
 }

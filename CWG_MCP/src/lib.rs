@@ -1,19 +1,23 @@
 //! Chat-facing MCP stdio tools over an existing, verified CWG durable inbox.
 //! No GitHub API privileges, no provider chat spoofing, no automatic task execution.
-#![forbid(unsafe_code)]
+// Production forbids unsafe; test-only native Windows ACL fixtures are isolated.
+#![cfg_attr(not(test), forbid(unsafe_code))]
+#![cfg_attr(test, deny(unsafe_code))]
 mod outbox;
 
 use cwg_github::Config;
 use cwg_protocol::DeliveryStatus;
-use cwg_security::decode;
+use cwg_security::{decode, windows_acl::read_private_config};
 use cwg_state::{Binding, Store};
 use serde::Deserialize;
 use serde_json::{Value, json};
-use std::{
-    fs::{self, File},
-    io::Read,
-    path::{Path, PathBuf},
-};
+use std::path::{Path, PathBuf};
+
+// Native security fixtures are test-only; never compiled into the server.
+#[cfg(all(test, windows))]
+#[allow(unsafe_code)]
+#[path = "../../CWG_State/tests/support/windows_fixture.rs"]
+mod windows_fixture;
 
 pub const MAX_RPC_BYTES: usize = 128 * 1024;
 const MODERN_VERSION: &str = "2026-07-28";
@@ -36,27 +40,6 @@ pub struct Server {
     phase: Phase,
 }
 
-fn no_links(path: &Path) -> Result<(), &'static str> {
-    for part in path.ancestors() {
-        match fs::symlink_metadata(part) {
-            Ok(meta) => {
-                if meta.file_type().is_symlink() {
-                    return Err("MCP_CONFIG_LINK_REFUSED");
-                }
-                #[cfg(windows)]
-                {
-                    use std::os::windows::fs::MetadataExt;
-                    if meta.file_attributes() & 0x400 != 0 {
-                        return Err("MCP_CONFIG_REPARSE_REFUSED");
-                    }
-                }
-            }
-            Err(_) => return Err("MCP_CONFIG_PATH_INVALID"),
-        }
-    }
-    Ok(())
-}
-
 impl Server {
     /// The source config and state directory MUST be protected by owner ACLs.
     /// This does not authenticate Codex's own thread/account to the OS.
@@ -64,17 +47,11 @@ impl Server {
         if !config_path.is_absolute() {
             return Err("MCP_ABSOLUTE_CONFIG_REQUIRED");
         }
-        no_links(config_path)?;
-        let meta = fs::symlink_metadata(config_path).map_err(|_| "MCP_CONFIG_OPEN")?;
-        if !meta.is_file() {
-            return Err("MCP_CONFIG_REGULAR_FILE_REQUIRED");
-        }
-        let mut bytes = Vec::new();
-        File::open(config_path)
-            .map_err(|_| "MCP_CONFIG_OPEN")?
-            .take(65_537)
-            .read_to_end(&mut bytes)
-            .map_err(|_| "MCP_CONFIG_READ")?;
+        // Read through the held Windows handle after owner/DACL, ancestor,
+        // volume, hardlink and reparse checks. Never check a path and later
+        // open it a second time through an ordinary File::open.
+        let bytes = read_private_config(config_path, 65_536)
+            .map_err(|_| "MCP_CONFIG_PRIVATE_FILE_REQUIRED")?;
         let config = Config::from_bytes(&bytes)?;
         let binding = config
             .routes
@@ -138,9 +115,15 @@ impl Server {
         let response = match method {
             "initialize" => self.initialize(params),
             "server/discover" => self.discover(params),
-            "ping" => validate_empty_params(params)
-                .and_then(|_| self.check_phase(params))
-                .map(|_| json!({})),
+            "ping" => match self.phase {
+                Phase::Modern => Err((-32601, "METHOD_NOT_FOUND")),
+                Phase::New if is_modern_envelope(params) => {
+                    modern_meta(params).and_then(|_| Err((-32601, "METHOD_NOT_FOUND")))
+                }
+                Phase::New | Phase::LegacyAwaitInitialized | Phase::LegacyReady => {
+                    validate_empty_params(params).map(|_| json!({}))
+                }
+            },
             "tools/list" => validate_list_params(params).and_then(|_| {
                 self.check_phase(params)?;
                 Ok(json!({"tools": tools()}))
@@ -152,20 +135,38 @@ impl Server {
             Ok(mut result) => {
                 // Adopt the stateless era only after a request is admitted.
                 // Malformed first requests must not poison later negotiation.
-                if self.phase == Phase::New {
+                if self.phase == Phase::New && method != "ping" {
                     self.phase = Phase::Modern;
                 }
-                if self.phase == Phase::Modern {
-                    if let Some(map) = result.as_object_mut() {
-                        map.insert("resultType".into(), json!("complete"));
-                        map.insert("_meta".into(), json!({
-                            "io.modelcontextprotocol/serverInfo": {
-                                "name":"cwg-mcp", "version":"0.1.0"
-                            }
-                        }));
+                if self.phase == Phase::Modern
+                    && let Some(map) = result.as_object_mut()
+                {
+                    map.insert("resultType".into(), json!("complete"));
+                    map.insert("_meta".into(), json!({
+                        "io.modelcontextprotocol/serverInfo": {
+                            "name": "cwg-mcp", "version": "0.1.0"
+                        }
+                    }));
+                    if matches!(method, "server/discover" | "tools/list") {
+                        // Never share scoped MCP metadata across callers.
+                        map.insert("ttlMs".into(), json!(0));
+                        map.insert("cacheScope".into(), json!("private"));
                     }
                 }
                 Some(json!({"jsonrpc":"2.0","id":safe_id,"result":result}))
+            }
+            Err((code, name)) if code == -32022 => {
+                let requested = params.and_then(Value::as_object)
+                    .and_then(|params| params.get("_meta"))
+                    .and_then(Value::as_object)
+                    .and_then(|meta| meta.get("io.modelcontextprotocol/protocolVersion"))
+                    .and_then(Value::as_str)
+                    .unwrap_or("");
+                Some(json!({"jsonrpc":"2.0","id":safe_id,"error":{
+                    "code":-32022,
+                    "message":name,
+                    "data":{"supported":[MODERN_VERSION],"requested":requested}
+                }}))
             }
             Err((code, name)) => Some(rpc_error(safe_id, code, name)),
         }
@@ -306,14 +307,25 @@ fn rpc_error(id: Value, code: i32, message: &str) -> Value {
     json!({"jsonrpc":"2.0","id":id,"error":{"code":code,"message":message}})
 }
 
+fn is_modern_envelope(params: Option<&Value>) -> bool {
+    params.and_then(Value::as_object)
+        .and_then(|params| params.get("_meta"))
+        .and_then(Value::as_object)
+        .is_some_and(|meta| meta.contains_key("io.modelcontextprotocol/protocolVersion"))
+}
+
 fn modern_meta(params: Option<&Value>) -> Result<(), (i32, &'static str)> {
     let obj = params.and_then(Value::as_object).ok_or((-32602, "MODERN_META_REQUIRED"))?;
     let meta = obj.get("_meta").and_then(Value::as_object)
         .ok_or((-32602, "MODERN_META_REQUIRED"))?;
-    if meta.get("io.modelcontextprotocol/protocolVersion").and_then(Value::as_str) != Some(MODERN_VERSION)
-        || !meta.get("io.modelcontextprotocol/clientCapabilities").is_some_and(Value::is_object)
-    {
-        return Err((-32602, "UNSUPPORTED_PROTOCOL_VERSION_OR_CAPABILITIES"));
+    let version = meta.get("io.modelcontextprotocol/protocolVersion")
+        .and_then(Value::as_str)
+        .ok_or((-32602, "MODERN_PROTOCOL_VERSION_REQUIRED"))?;
+    if version != MODERN_VERSION {
+        return Err((-32022, "UNSUPPORTED_PROTOCOL_VERSION"));
+    }
+    if !meta.get("io.modelcontextprotocol/clientCapabilities").is_some_and(Value::is_object) {
+        return Err((-32602, "CLIENT_CAPABILITIES_REQUIRED"));
     }
     if let Some(info) = meta.get("io.modelcontextprotocol/clientInfo")
         && !valid_client_info(info)
@@ -443,15 +455,23 @@ fn tools() -> Vec<Value> {
 mod tests {
     use super::*;
     use cwg_protocol::{ChatTarget, GithubSource, Message};
+    use std::fs;
+    #[cfg(not(windows))]
     use std::time::{SystemTime, UNIX_EPOCH};
 
     pub(super) fn setup() -> (Server, PathBuf) {
-        let root = std::env::temp_dir().join(format!(
-            "cwg-mcp-{}-{}",
-            std::process::id(),
-            SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos()
-        ));
-        fs::create_dir(&root).unwrap();
+        #[cfg(windows)]
+        let root = super::windows_fixture::private_temp_dir("mcp");
+        #[cfg(not(windows))]
+        let root = {
+            let root = std::env::temp_dir().join(format!(
+                "cwg-mcp-{}-{}",
+                std::process::id(),
+                SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos()
+            ));
+            fs::create_dir(&root).unwrap();
+            root
+        };
         let binding = Binding {
             id:"agent-one".into(), repository_id:11, owner_id:22,
             repository:"owner/repo".into(), issue_number:7,
@@ -606,3 +626,7 @@ mod tests {
 
 #[cfg(test)]
 mod rpc_boundary_tests;
+#[cfg(test)]
+mod protocol_conformance_tests;
+#[cfg(all(test, windows))]
+mod protected_storage_tests;

@@ -1,10 +1,11 @@
 //! Durable, data-only worker reports. This is NOT an authenticated GitHub
 //! publisher, a task completion oracle, or a second delivery state machine.
+use cwg_security::windows_acl::open_private_reports_journal;
 use cwg_state::Binding;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::BTreeSet,
-    fs::{self, File, OpenOptions},
+    fs::File,
     io::{Read, Write},
     path::Path,
     time::{SystemTime, UNIX_EPOCH},
@@ -49,37 +50,6 @@ fn validate(record: &Report) -> Result<(), &'static str> {
         || record.created_at_unix_ms == 0
     {
         return Err("REPORT_INVALID");
-    }
-    Ok(())
-}
-
-// Reject observed links and Windows reparse points, including parent paths.
-// Filesystem ACLs and hostile same-user races still require independent review.
-fn no_links(path: &Path) -> Result<(), &'static str> {
-    for part in path.ancestors() {
-        match fs::symlink_metadata(part) {
-            Ok(meta) => {
-                if meta.file_type().is_symlink() {
-                    return Err("REPORT_LINK_REFUSED");
-                }
-                #[cfg(windows)]
-                {
-                    use std::os::windows::fs::MetadataExt;
-                    if meta.file_attributes() & 0x400 != 0 {
-                        return Err("REPORT_REPARSE_REFUSED");
-                    }
-                }
-                #[cfg(unix)]
-                {
-                    use std::os::unix::fs::MetadataExt;
-                    if meta.is_file() && meta.nlink() != 1 {
-                        return Err("REPORT_HARDLINK_REFUSED");
-                    }
-                }
-            }
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound && part == path => {}
-            Err(_) => return Err("REPORT_PATH_INVALID"),
-        }
     }
     Ok(())
 }
@@ -178,9 +148,7 @@ pub(crate) fn append(
     if !root.is_absolute() || !root.is_dir() {
         return Err("REPORT_ROOT_INVALID");
     }
-    no_links(root)?;
-    let path = root.join("worker-reports.jsonl");
-    no_links(&path)?;
+    // The protected Windows file opener will pin the root and all ancestors.
     let now = u64::try_from(
         SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -200,22 +168,18 @@ pub(crate) fn append(
         created_at_unix_ms: now,
     };
     validate(&proposed)?;
-    let mut options = OpenOptions::new();
-    options.read(true).append(true).create(true);
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::OpenOptionsExt;
-        options.mode(0o600);
-    }
-    let mut file = options.open(&path).map_err(|_| "REPORT_OPEN")?;
+    let mut guard = open_private_reports_journal(root)
+        .map_err(|_| "REPORT_PRIVATE_FILE_REQUIRED")?;
+    let file = guard.file_mut();
     file.try_lock().map_err(|_| "REPORT_BUSY")?;
-    update_journal(&mut file, &proposed)
+    update_journal(file, &proposed)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use cwg_protocol::ChatTarget;
+    use std::fs::{self, OpenOptions};
     fn binding() -> Binding {
         Binding {
             id: "sample".into(),
@@ -234,12 +198,18 @@ mod tests {
     }
     #[test]
     fn durable_reopen_deduplicates_and_blocks_conflicts() {
-        let root = std::env::temp_dir().join(format!(
-            "cwg-mcp-report-{}-{}",
-            std::process::id(),
-            SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos()
-        ));
-        fs::create_dir(&root).unwrap();
+        #[cfg(windows)]
+        let root = crate::windows_fixture::private_temp_dir("mcp-report");
+        #[cfg(not(windows))]
+        let root = {
+            let root = std::env::temp_dir().join(format!(
+                "cwg-mcp-report-{}-{}",
+                std::process::id(),
+                SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos()
+            ));
+            fs::create_dir(&root).unwrap();
+            root
+        };
         let b = binding();
         assert_eq!(append(&root, &b, "gh:1:4", "r1", "progress", "started"), Ok(true));
         assert_eq!(append(&root, &b, "gh:1:4", "r1", "progress", "started"), Ok(false));

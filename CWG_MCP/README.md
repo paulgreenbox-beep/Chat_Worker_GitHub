@@ -45,7 +45,10 @@ args = ["C:/CWG-Private/receiver.json", "development"]
 
 The arguments are a protected absolute receiver config and an approved binding
 ID, not caller-supplied task data. The MCP server does not require GitHub
-tokens. Its owner must protect the config/state parent namespaces with ACLs.
+tokens. The WP-01B code opens config and the fixed report journal with held
+Windows protected handles and owner/DACL/anti-link checks. Its owner must
+protect the config/state parent namespaces with ACLs. This source change is
+NOT_RUN until independent Windows qualification.
 
 **Important:** Codex can expose an MCP server in more than one chat. The MCP
 protocol does not authenticate which Codex thread invoked it; these pinned

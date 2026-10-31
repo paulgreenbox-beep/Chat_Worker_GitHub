@@ -94,3 +94,24 @@ This source adds unit tests for both protocol eras, scoped message reads,
 malformed/duplicate requests, local report idempotence and no false provider
 acknowledgement. Native Windows, Codex interop and live webhook-to-chat E2E
 require separate verification; no such tests are claimed PASS here.
+
+## WP-01B source hardening (NOT_RUN)
+
+- Owner config is read through `read_private_config`, which checks the actual
+  opened Windows handle, DACL/owner, link shape and pinned ancestors.
+- `worker-reports.jsonl` uses a separate, fixed/allowlisted protected leaf
+  with the same guard lifetime across lock, replay, append and sync. No
+  caller-controlled report filename or general-purpose path API is exposed.
+- Modern `server/discover` and `tools/list` return `ttlMs:0` and
+  `cacheScope:"private"`, never promising a cross-user shared cache.
+- Unsupported modern version returns JSON-RPC `-32022` with `data.supported`
+  and `data.requested`; malformed client metadata remains `-32602`.
+- Legacy `ping` is permitted before/during/after initialization without
+  entering the modern era; modern `ping` is method-not-found (`-32601`).
+- Stdio emits at most 1 MiB per fully JSON-serialized response line, with
+  explicit exact-limit/MAX+1 tests. Oversize output fails closed.
+
+These are implementation claims for an unqualified source revision, **not**
+independent Windows PASS or provider identity validation. Rustfmt, Clippy,
+native ACL tests, negative protocol probes and genuine MCP client interop
+remain pending for the combined WP-01B SHA.

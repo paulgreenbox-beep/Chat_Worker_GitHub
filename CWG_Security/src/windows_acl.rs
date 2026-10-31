@@ -33,13 +33,21 @@ pub fn read_private_config(_: &Path, _: usize) -> Result<Vec<u8>> {
 pub fn open_private_journal(_: &Path) -> Result<GuardedFile> {
     Err("WINDOWS_ACL_REQUIRED")
 }
+/// Fixed, allowlisted MCP report journal. Never accept a caller-supplied leaf.
+#[cfg(not(windows))]
+pub fn open_private_reports_journal(_: &Path) -> Result<GuardedFile> {
+    Err("WINDOWS_ACL_REQUIRED")
+}
 #[cfg(not(windows))]
 pub fn validate_private_file_handle(_: &File) -> Result<()> {
     Err("WINDOWS_ACL_REQUIRED")
 }
 
 #[cfg(windows)]
-pub use native::{open_private_journal, read_private_config, validate_private_file_handle};
+pub use native::{
+    open_private_journal, open_private_reports_journal, read_private_config,
+    validate_private_file_handle,
+};
 
 #[cfg(windows)]
 mod native {
@@ -595,6 +603,12 @@ mod native {
     pub fn open_private_journal(root: &Path) -> Result<GuardedFile> {
         local_path(root)?;
         open_guarded(&root.join("inbox.jsonl"), Some(root), true)
+    }
+    /// The exact MCP report leaf receives the same held-ancestor, owner/DACL,
+    /// reparse, hardlink and pre-existing-writer policy as the inbox journal.
+    pub fn open_private_reports_journal(root: &Path) -> Result<GuardedFile> {
+        local_path(root)?;
+        open_guarded(&root.join("worker-reports.jsonl"), Some(root), true)
     }
     pub fn read_private_config(path: &Path, limit: usize) -> Result<Vec<u8>> {
         let read_limit = limit.checked_add(1).ok_or("ACL_FILE_LIMIT")?;
