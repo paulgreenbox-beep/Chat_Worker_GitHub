@@ -17,7 +17,6 @@ authority. No containers, VMs, model calls, automatic merge or installed service
 | CWG_GitHub | Foreground Windows receiver, fixed-host API reconciliation, local inbox CLI | Controlled-loopback receiver-to-inbox integration; live GitHub/Codex delivery NOT_RUN |
 | CWG_MCP | Scoped stdio inbox tools and non-authoritative local reports from PR #3 | WP-01B integrated source NOT_RUN; files/spec protection not yet qualified |
 | CWG_Worker | Trusted Codex App Server adapter | NOT_IMPLEMENTED |
-| CWG_MCP / CWG_Worker | Planned MCP and Codex adapter | NOT_IMPLEMENTED |
 | CWG_CheckBroker | Optional independent check integration | Disabled; not needed for ordinary messages |
 
 The receiver is **not a qualified deployment**. Native Windows build, test and
