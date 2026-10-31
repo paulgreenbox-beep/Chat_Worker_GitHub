@@ -1,6 +1,7 @@
 //! Protocol-boundary regression tests. These do not authenticate a Codex chat.
 use super::tests::{init, send, setup};
 use super::*;
+use std::fs;
 
 fn metadata() -> Value {
     json!({

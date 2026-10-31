@@ -118,7 +118,7 @@ impl Server {
             "ping" => match self.phase {
                 Phase::Modern => Err((-32601, "METHOD_NOT_FOUND")),
                 Phase::New if is_modern_envelope(params) => {
-                    modern_meta(params).and_then(|_| Err((-32601, "METHOD_NOT_FOUND")))
+                    modern_meta(params).and(Err((-32601, "METHOD_NOT_FOUND")))
                 }
                 Phase::New | Phase::LegacyAwaitInitialized | Phase::LegacyReady => {
                     validate_empty_params(params).map(|_| json!({}))
@@ -155,7 +155,7 @@ impl Server {
                 }
                 Some(json!({"jsonrpc":"2.0","id":safe_id,"result":result}))
             }
-            Err((code, name)) if code == -32022 => {
+            Err((-32022, name)) => {
                 let requested = params.and_then(Value::as_object)
                     .and_then(|params| params.get("_meta"))
                     .and_then(Value::as_object)
